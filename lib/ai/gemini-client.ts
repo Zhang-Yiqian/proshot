@@ -14,6 +14,7 @@ interface GenerateOptions {
 interface GenerateResult {
   success: boolean
   imageUrl?: string
+  imageUrls?: string[] // 新增支持多图
   error?: string
 }
 
@@ -86,11 +87,17 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
     const message = data.choices?.[0]?.message
     
     // 检查 images 数组
-    if (message?.images?.[0]) {
-      const img = message.images[0]
-      const url = img.image_url?.url || img.imageUrl?.url
-      if (url) {
-        return { success: true, imageUrl: url }
+    if (message?.images && Array.isArray(message.images) && message.images.length > 0) {
+      const urls = message.images
+        .map((img: any) => img.image_url?.url || img.imageUrl?.url)
+        .filter(Boolean)
+      
+      if (urls.length > 0) {
+        return { 
+          success: true, 
+          imageUrl: urls[0], 
+          imageUrls: urls 
+        }
       }
     }
     
@@ -141,5 +148,42 @@ export async function generateProductImage(
     prompt,
     imageUrl: referenceImageUrl,
     model: AI_MODELS.MAIN_IMAGE,
+  })
+}
+
+/**
+ * 生成模特多视角/多姿势图
+ */
+export async function generateMultiPoseImages(
+  mainImageUrl: string
+): Promise<GenerateResult> {
+  // TODO: 后续由用户自行维护具体的 Prompt 逻辑
+  const prompt = `基于这张主图，生成5张模特在相同场景下的不同姿态视角图。要求：
+1. 模特保持长相、身材、发型完全一致；
+2. 服装款式、颜色、纹理细节与主图完全一致；
+3. 场景光影和背景保持一致；
+4. 5个姿态分别是：正面、侧面30度、侧面90度、背面、以及一个自然走动的姿态；
+5. 请直接输出5张图片。`
+
+  // 如果是 Mock 模式
+  if (MODEL_CONFIG.mockMode) {
+    await new Promise(resolve => setTimeout(resolve, 3000))
+    return {
+      success: true,
+      imageUrl: MODEL_CONFIG.mockImageUrl,
+      imageUrls: [
+        MODEL_CONFIG.mockImageUrl,
+        MODEL_CONFIG.mockImageUrl,
+        MODEL_CONFIG.mockImageUrl,
+        MODEL_CONFIG.mockImageUrl,
+        MODEL_CONFIG.mockImageUrl,
+      ]
+    }
+  }
+
+  return generateImage({
+    prompt,
+    imageUrl: mainImageUrl,
+    model: AI_MODELS.MULTI_POSE,
   })
 }

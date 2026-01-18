@@ -29,11 +29,14 @@ export default function HomePage() {
   const [generating, setGenerating] = useState(false)
   const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [generatedImage, setGeneratedImage] = useState<string>('')
+  const [multiPoseImages, setMultiPoseImages] = useState<string[]>([])
+  const [generatingMultiPose, setGeneratingMultiPose] = useState(false)
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
     setPreviewUrl(URL.createObjectURL(file))
     setGeneratedImage('') // 清除之前的生成结果
+    setMultiPoseImages([])
   }
 
   const handleClear = () => {
@@ -43,6 +46,7 @@ export default function HomePage() {
       setPreviewUrl('')
     }
     setGeneratedImage('')
+    setMultiPoseImages([])
   }
 
   const handleGenerate = async () => {
@@ -55,6 +59,8 @@ export default function HomePage() {
     if (!selectedFile) return
 
     setGenerating(true)
+    setGeneratedImage('')
+    setMultiPoseImages([])
     try {
       // 上传图片
       const fileExt = selectedFile.name.split('.').pop()
@@ -93,6 +99,38 @@ export default function HomePage() {
       alert('生成失败，请稍后重试')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleGenerateMultiPose = async () => {
+    if (!generatedImage) return
+
+    setGeneratingMultiPose(true)
+    try {
+      const response = await fetch('/api/generate/multi-pose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mainImageUrl: generatedImage,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.imageUrls) {
+        setMultiPoseImages(result.imageUrls)
+        // 滚动到多视角图区域
+        setTimeout(() => {
+          document.getElementById('multi-pose-results')?.scrollIntoView({ behavior: 'smooth' })
+        }, 100)
+      } else {
+        alert(result.error || '生成多视角图失败')
+      }
+    } catch (error) {
+      console.error('多视角生成失败:', error)
+      alert('生成多视角图失败，请稍后重试')
+    } finally {
+      setGeneratingMultiPose(false)
     }
   }
 
@@ -222,11 +260,11 @@ export default function HomePage() {
               
               {generatedImage ? (
                 <div className="space-y-4">
-                  <div className="relative rounded-xl overflow-hidden border border-border/50">
+                  <div className="relative rounded-xl overflow-hidden border border-border/50 aspect-[3/4] bg-muted">
                     <img
                       src={generatedImage}
                       alt="Generated"
-                      className="w-full h-auto"
+                      className="w-full h-full object-cover"
                     />
                     {/* 水印提示 */}
                     <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
@@ -236,13 +274,27 @@ export default function HomePage() {
                     </div>
                   </div>
                   
-                  <Button className="w-full gap-2" variant="secondary">
-                    <Download className="h-4 w-4" />
-                    下载高清图（-1 积分）
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button className="w-full gap-2" variant="secondary">
+                      <Download className="h-4 w-4" />
+                      下载主图
+                    </Button>
+                    <Button 
+                      className="w-full gap-2 btn-glow" 
+                      onClick={handleGenerateMultiPose}
+                      disabled={generatingMultiPose}
+                    >
+                      {generatingMultiPose ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      生成多视角
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="flex flex-col items-center justify-center py-16 text-center aspect-[3/4]">
                   <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
                     <Sparkles className="h-10 w-10 text-muted-foreground/30" />
                   </div>
@@ -254,6 +306,51 @@ export default function HomePage() {
               )}
             </div>
           </div>
+
+          {/* 多视角图结果区域 */}
+          { (generatingMultiPose || multiPoseImages.length > 0) && (
+            <div id="multi-pose-results" className="mt-12 space-y-6 max-w-6xl mx-auto">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold flex items-center gap-3">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                  多视角姿态展示
+                </h2>
+                {multiPoseImages.length > 0 && (
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    打包下载全部
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {generatingMultiPose && multiPoseImages.length === 0 ? (
+                  // 加载状态占位符
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="glass-card aspect-[3/4] flex flex-col items-center justify-center animate-pulse bg-muted/50">
+                      <Loader2 className="h-8 w-8 text-primary/40 animate-spin mb-2" />
+                      <p className="text-xs text-muted-foreground">正在生成视角 {i + 1}...</p>
+                    </div>
+                  ))
+                ) : (
+                  multiPoseImages.map((img, i) => (
+                    <div key={i} className="group relative glass-card overflow-hidden aspect-[3/4] border-border/50 hover:border-primary/50 transition-all">
+                      <img
+                        src={img}
+                        alt={`Pose ${i + 1}`}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button size="icon" variant="secondary" className="rounded-full">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* 特性介绍 */}
