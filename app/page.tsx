@@ -1,38 +1,39 @@
-/**
- * 首页 - 直接展示工作台（提高转化率）
- * 用户可以预览和配置，提交时才要求注册
- */
-
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { Sparkles, Loader2, Shirt, Package, ArrowRight, Zap, Download, Gift } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Header } from '@/components/layout/header'
+import { Footer } from '@/components/layout/footer'
 import { UploadZone } from '@/components/workbench/upload-zone'
 import { ConfigPanel } from '@/components/workbench/config-panel'
 import { AuthDialog } from '@/components/common/auth-dialog'
 import { useUser } from '@/hooks/use-user'
 import { createClient } from '@/lib/supabase/client'
+import { siteConfig } from '@/config/site'
+import { cn } from '@/lib/utils'
+
+type GenerationMode = 'clothing' | 'product'
 
 export default function HomePage() {
   const router = useRouter()
-  const { user, profile, loading: userLoading } = useUser()
+  const { user, profile } = useUser()
   const supabase = createClient()
 
+  // 状态
+  const [mode, setMode] = useState<GenerationMode>('clothing')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [selectedScene, setSelectedScene] = useState('white-bg')
   const [generating, setGenerating] = useState(false)
   const [showAuthDialog, setShowAuthDialog] = useState(false)
-  const [generatedImages, setGeneratedImages] = useState<string[]>([])
+  const [generatedImage, setGeneratedImage] = useState<string>('')
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
-    const url = URL.createObjectURL(file)
-    setPreviewUrl(url)
+    setPreviewUrl(URL.createObjectURL(file))
+    setGeneratedImage('') // 清除之前的生成结果
   }
 
   const handleClear = () => {
@@ -41,25 +42,25 @@ export default function HomePage() {
       URL.revokeObjectURL(previewUrl)
       setPreviewUrl('')
     }
+    setGeneratedImage('')
   }
 
   const handleGenerate = async () => {
-    // 如果用户未登录，弹出注册/登录弹窗
+    // 未登录时弹出注册框
     if (!user) {
       setShowAuthDialog(true)
       return
     }
 
-    // 已登录用户，执行生成逻辑
     if (!selectedFile) return
 
     setGenerating(true)
     try {
-      // 1. 上传原图到Supabase Storage
+      // 上传图片
       const fileExt = selectedFile.name.split('.').pop()
       const fileName = `${user.id}/${Date.now()}.${fileExt}`
       
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('originals')
         .upload(fileName, selectedFile)
 
@@ -69,22 +70,23 @@ export default function HomePage() {
         .from('originals')
         .getPublicUrl(fileName)
 
-      // 2. 调用生成API
+      // 调用生成 API
       const response = await fetch('/api/generate/main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalImageUrl: publicUrl,
           sceneType: selectedScene,
+          mode,
         }),
       })
 
       const result = await response.json()
 
       if (result.success) {
-        setGeneratedImages([result.imageUrl])
+        setGeneratedImage(result.imageUrl)
       } else {
-        alert(result.error || '生成失败')
+        alert(result.error || '生成失败，请重试')
       }
     } catch (error) {
       console.error('生成失败:', error)
@@ -98,105 +100,201 @@ export default function HomePage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       
-      <main className="flex-1 container py-8">
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* 左侧：上传和配置 */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>上传商品图</CardTitle>
-                <CardDescription>
-                  上传人台图或平铺图（支持拖拽）
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+      <main className="flex-1">
+        {/* Hero 区域 */}
+        <section className="container py-8 md:py-12">
+          {/* 标题 */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-4">
+              <span className="text-gradient">一键上镜</span>
+              <span className="text-foreground">，让商品更出众</span>
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              上传商品图，AI 秒变专业商拍。告别高成本，拥抱高效率。
+            </p>
+          </div>
+
+          {/* 模式切换 */}
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex items-center p-1 rounded-xl bg-muted/50 backdrop-blur-sm border border-border/50">
+              <button
+                onClick={() => setMode('clothing')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  mode === 'clothing'
+                    ? "bg-primary text-primary-foreground shadow-lg"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Shirt className="h-4 w-4" />
+                服装上身
+              </button>
+              <button
+                onClick={() => setMode('product')}
+                disabled
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  mode === 'product'
+                    ? "bg-primary text-primary-foreground shadow-lg"
+                    : "text-muted-foreground hover:text-foreground opacity-50 cursor-not-allowed"
+                )}
+              >
+                <Package className="h-4 w-4" />
+                物品场景
+                <span className="text-xs px-1.5 py-0.5 rounded bg-secondary/20 text-secondary">
+                  即将上线
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* 工作区 */}
+          <div className="grid gap-6 lg:grid-cols-2 max-w-6xl mx-auto">
+            {/* 左侧：上传和配置 */}
+            <div className="space-y-6">
+              {/* 上传区域 */}
+              <div className="glass-card p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-sm font-bold">1</span>
+                  上传商品图
+                </h2>
                 <UploadZone
                   onFileSelect={handleFileSelect}
                   onClear={handleClear}
                   previewUrl={previewUrl}
                 />
-              </CardContent>
-            </Card>
-
-            <ConfigPanel
-              selectedScene={selectedScene}
-              onSceneChange={setSelectedScene}
-            />
-
-            <Button
-              size="lg"
-              className="w-full gap-2"
-              disabled={!selectedFile || generating}
-              onClick={handleGenerate}
-            >
-              {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  {user ? '一键上镜' : '一键上镜（需要注册）'}
-                </>
-              )}
-            </Button>
-
-            {!user && (
-              <div className="text-sm text-center text-muted-foreground">
-                💡 点击生成按钮后需要注册才能查看结果，新用户赠送5积分
               </div>
-            )}
 
-            {profile && (
-              <div className="text-sm text-muted-foreground text-center">
-                当前积分：<span className="font-bold text-primary">{profile.credits}</span>
-                {' '}| 生成预览免费，下载消耗1积分
+              {/* 场景选择 */}
+              <div className="glass-card p-6">
+                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-sm font-bold">2</span>
+                  选择场景
+                </h2>
+                <ConfigPanel
+                  selectedScene={selectedScene}
+                  onSceneChange={setSelectedScene}
+                />
               </div>
-            )}
-          </div>
 
-          {/* 右侧：生成结果 */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>生成结果</CardTitle>
-                <CardDescription>
-                  预览生成的图片，满意后下载高清大图
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {generatedImages.length > 0 ? (
-                  <div className="space-y-4">
-                    {generatedImages.map((url, index) => (
-                      <div key={index} className="relative rounded-lg border overflow-hidden">
-                        <img
-                          src={url}
-                          alt={`Generated ${index + 1}`}
-                          className="w-full h-auto"
-                        />
-                        <div className="p-4 bg-background/95 backdrop-blur">
-                          <Button className="w-full">
-                            下载高清图 (-1积分)
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+              {/* 生成按钮 */}
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg btn-glow gap-2"
+                disabled={!selectedFile || generating}
+                onClick={handleGenerate}
+              >
+                {generating ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    AI 正在创作...
+                  </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                    <Sparkles className="h-12 w-12 mb-4 opacity-20" />
-                    <p>生成的图片将显示在这里</p>
-                    <p className="text-xs mt-2">上传图片，选择风格，点击生成即可</p>
-                  </div>
+                  <>
+                    <Sparkles className="h-5 w-5" />
+                    一键上镜
+                    {!user && <span className="text-sm opacity-80">（需注册）</span>}
+                  </>
                 )}
-              </CardContent>
-            </Card>
+              </Button>
+
+              {/* 提示信息 */}
+              {!user ? (
+                <p className="text-sm text-center text-muted-foreground">
+                  <Gift className="inline h-4 w-4 mr-1 text-secondary" />
+                  新用户注册即送 {siteConfig.credits.initial} 积分
+                </p>
+              ) : profile && (
+                <p className="text-sm text-center text-muted-foreground">
+                  当前积分：<span className="text-primary font-mono font-bold">{profile.credits}</span>
+                  <span className="mx-2">•</span>
+                  预览免费，下载 1 积分/张
+                </p>
+              )}
+            </div>
+
+            {/* 右侧：生成结果 */}
+            <div className="glass-card p-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-sm font-bold">3</span>
+                生成结果
+              </h2>
+              
+              {generatedImage ? (
+                <div className="space-y-4">
+                  <div className="relative rounded-xl overflow-hidden border border-border/50">
+                    <img
+                      src={generatedImage}
+                      alt="Generated"
+                      className="w-full h-auto"
+                    />
+                    {/* 水印提示 */}
+                    <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                      <p className="text-xs text-white/70 text-center">
+                        预览图 • 下载高清无水印图需消耗 1 积分
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button className="w-full gap-2" variant="secondary">
+                    <Download className="h-4 w-4" />
+                    下载高清图（-1 积分）
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                    <Sparkles className="h-10 w-10 text-muted-foreground/30" />
+                  </div>
+                  <p className="text-muted-foreground mb-2">生成的图片将显示在这里</p>
+                  <p className="text-sm text-muted-foreground/70">
+                    上传图片 → 选择场景 → 点击生成
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* 特性介绍 */}
+        <section className="container py-16 border-t border-border/40">
+          <div className="grid gap-8 md:grid-cols-3 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4">
+                <Zap className="h-6 w-6" />
+              </div>
+              <h3 className="font-semibold mb-2">秒级生成</h3>
+              <p className="text-sm text-muted-foreground">
+                AI 驱动，30 秒内完成专业级商拍效果
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-secondary/10 text-secondary mb-4">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <h3 className="font-semibold mb-2">高度还原</h3>
+              <p className="text-sm text-muted-foreground">
+                精准保留服装细节、颜色和款式特征
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4">
+                <ArrowRight className="h-6 w-6" />
+              </div>
+              <h3 className="font-semibold mb-2">简单易用</h3>
+              <p className="text-sm text-muted-foreground">
+                无需专业技能，上传即可生成营销大片
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* 认证弹窗（未登录用户点击生成时显示） */}
+      <Footer />
+
+      {/* 认证弹窗 */}
       <AuthDialog 
         open={showAuthDialog} 
         onClose={() => setShowAuthDialog(false)}

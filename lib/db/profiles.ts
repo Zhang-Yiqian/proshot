@@ -23,16 +23,16 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   }
 
   return {
-    id: data.id,
-    credits: data.credits,
-    isSubscriber: data.is_subscriber,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
+    id: data.id as string,
+    credits: data.credits as number,
+    isSubscriber: data.is_subscriber as boolean,
+    createdAt: data.created_at as string,
+    updatedAt: data.updated_at as string,
   }
 }
 
 /**
- * 创建新用户Profile（注册时调用）
+ * 创建新用户Profile
  */
 export async function createUserProfile(userId: string): Promise<UserProfile | null> {
   const supabase = createClient()
@@ -41,9 +41,9 @@ export async function createUserProfile(userId: string): Promise<UserProfile | n
     .from('profiles')
     .insert({
       id: userId,
-      credits: siteConfig.initialCredits, // 初始赠送积分
+      credits: siteConfig.credits.initial,
       is_subscriber: false,
-    })
+    } as any)
     .select()
     .single()
 
@@ -53,11 +53,11 @@ export async function createUserProfile(userId: string): Promise<UserProfile | n
   }
 
   return {
-    id: data.id,
-    credits: data.credits,
-    isSubscriber: data.is_subscriber,
-    createdAt: data.created_at,
-    updatedAt: data.updated_at,
+    id: data.id as string,
+    credits: data.credits as number,
+    isSubscriber: data.is_subscriber as boolean,
+    createdAt: data.created_at as string,
+    updatedAt: data.updated_at as string,
   }
 }
 
@@ -70,7 +70,6 @@ export async function deductCredits(
 ): Promise<{ success: boolean; newBalance?: number; error?: string }> {
   const supabase = createClient()
 
-  // 先检查余额
   const profile = await getUserProfile(userId)
   if (!profile) {
     return { success: false, error: '用户不存在' }
@@ -80,13 +79,12 @@ export async function deductCredits(
     return { success: false, error: '积分不足' }
   }
 
-  // 扣除积分
   const { data, error } = await supabase
     .from('profiles')
     .update({
       credits: profile.credits - amount,
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('id', userId)
     .select()
     .single()
@@ -95,11 +93,11 @@ export async function deductCredits(
     return { success: false, error: '扣除积分失败' }
   }
 
-  return { success: true, newBalance: data.credits }
+  return { success: true, newBalance: (data as any).credits }
 }
 
 /**
- * 增加用户积分（充值或退款）
+ * 增加用户积分
  */
 export async function addCredits(
   userId: string,
@@ -117,7 +115,7 @@ export async function addCredits(
     .update({
       credits: profile.credits + amount,
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('id', userId)
     .select()
     .single()
@@ -126,5 +124,5 @@ export async function addCredits(
     return { success: false, error: '增加积分失败' }
   }
 
-  return { success: true, newBalance: data.credits }
+  return { success: true, newBalance: (data as any).credits }
 }

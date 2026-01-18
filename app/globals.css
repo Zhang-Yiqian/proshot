@@ -2,50 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   ProShot 设计系统 - 基于 ui-ux-pro-max-skill
+   采用深色 Glassmorphism 风格
+   ======================================== */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    /* 深色主题 - 默认 */
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    
+    --card: 240 10% 6%;
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 240 10% 6%;
+    --popover-foreground: 0 0% 98%;
+    
+    /* 主色 - Electric Violet */
+    --primary: 263 70% 58%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* 次要色 - Cyan */
+    --secondary: 187 85% 43%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 240 10% 12%;
+    --muted-foreground: 240 5% 64.9%;
+    
+    --accent: 263 50% 30%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 10% 15%;
+    --input: 240 10% 15%;
+    --ring: 263 70% 58%;
+    
+    --radius: 0.75rem;
+    
+    /* 渐变变量 */
+    --gradient-primary: linear-gradient(135deg, hsl(263, 70%, 58%) 0%, hsl(187, 85%, 43%) 100%);
+    --gradient-glow: radial-gradient(ellipse at 50% 0%, hsla(263, 70%, 58%, 0.15) 0%, transparent 70%);
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 263 70% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 187 85% 43%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 263 50% 95%;
+    --accent-foreground: 263 70% 58%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5% 90%;
+    --input: 240 5% 90%;
+    --ring: 263 70% 58%;
   }
 }
 
@@ -53,7 +74,137 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* 选中文字颜色 */
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+}
+
+@layer components {
+  /* 毛玻璃卡片 */
+  .glass-card {
+    @apply bg-card/50 backdrop-blur-xl border border-white/10 rounded-xl;
+    box-shadow: 
+      0 0 0 1px hsla(0, 0%, 100%, 0.05) inset,
+      0 4px 24px -4px hsla(0, 0%, 0%, 0.4);
+  }
+  
+  /* 发光按钮 */
+  .btn-glow {
+    @apply relative overflow-hidden;
+    box-shadow: 0 0 20px hsla(263, 70%, 58%, 0.3);
+  }
+  
+  .btn-glow:hover {
+    box-shadow: 0 0 30px hsla(263, 70%, 58%, 0.5);
+  }
+  
+  /* 渐变文字 */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+  
+  /* 渐变边框 */
+  .border-gradient {
+    @apply relative;
+    background: linear-gradient(var(--background), var(--background)) padding-box,
+                var(--gradient-primary) border-box;
+    border: 1px solid transparent;
+  }
+  
+  /* 上传区域样式 */
+  .upload-zone {
+    @apply relative rounded-xl border-2 border-dashed border-border/50;
+    @apply bg-card/30 backdrop-blur-sm;
+    @apply transition-all duration-300;
+  }
+  
+  .upload-zone:hover {
+    @apply border-primary/50 bg-primary/5;
+  }
+  
+  .upload-zone.dragging {
+    @apply border-primary bg-primary/10;
+    box-shadow: 0 0 40px hsla(263, 70%, 58%, 0.2);
+  }
+  
+  /* 选项卡样式 */
+  .tab-item {
+    @apply relative px-4 py-2 rounded-lg;
+    @apply text-muted-foreground transition-all duration-200;
+  }
+  
+  .tab-item:hover {
+    @apply text-foreground bg-muted/50;
+  }
+  
+  .tab-item.active {
+    @apply text-primary bg-primary/10;
+  }
+  
+  .tab-item.active::after {
+    content: '';
+    @apply absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5;
+    @apply bg-primary rounded-full;
+  }
+}
+
+@layer utilities {
+  /* 动画 */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background-size: 200% 100%;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  
+  /* 背景网格 */
+  .bg-grid {
+    background-image: 
+      linear-gradient(hsla(0, 0%, 100%, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsla(0, 0%, 100%, 0.03) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+  
+  /* 背景光晕 */
+  .bg-glow {
+    background-image: var(--gradient-glow);
+  }
+  
+  /* 隐藏滚动条 */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

@@ -1,259 +1,162 @@
-# ProShot 项目文件结构说明
+# ProShot 项目结构说明
 
-## 📂 完整目录树
+## 📂 目录结构
 
 ```
 ProShot/
 │
 ├── 📄 配置文件
-│   ├── package.json              # 项目依赖配置
+│   ├── package.json              # 项目依赖
 │   ├── tsconfig.json             # TypeScript配置
 │   ├── next.config.js            # Next.js配置
 │   ├── tailwind.config.ts        # Tailwind CSS配置
 │   ├── postcss.config.js         # PostCSS配置
 │   ├── components.json           # Shadcn/UI配置
-│   ├── .eslintrc.json            # ESLint配置
-│   ├── .gitignore                # Git忽略文件
-│   ├── middleware.ts             # Next.js中间件（Supabase认证）
-│   ├── README.md                 # 项目说明文档
-│   └── PRD.md                    # 产品需求文档
+│   └── middleware.ts             # Next.js中间件
 │
-├── 📱 app/ (Next.js 14 App Router核心目录)
+├── 📱 app/                        # Next.js App Router
+│   ├── layout.tsx                # 全局布局
+│   ├── page.tsx                  # 首页（工作台）
+│   ├── globals.css               # 全局样式
 │   │
-│   ├── layout.tsx                # 全局布局（字体、Provider）
-│   ├── page.tsx                  # 首页 Landing Page
-│   ├── globals.css               # 全局样式（Tailwind变量）
+│   ├── (auth)/                   # 认证页面
+│   │   ├── login/page.tsx        # 登录
+│   │   └── register/page.tsx     # 注册
 │   │
-│   ├── 🔐 (auth)/               # 认证路由组（不影响URL）
-│   │   ├── login/
-│   │   │   └── page.tsx          # 登录页面
-│   │   └── register/
-│   │       └── page.tsx          # 注册页面
+│   ├── gallery/page.tsx          # 我的作品
+│   ├── pricing/page.tsx          # 积分充值
+│   ├── about/page.tsx            # 关于我们
 │   │
-│   ├── 🎨 workbench/            # 工作台（核心功能页）
-│   │   └── page.tsx              # 上传+配置+生成页面
-│   │
-│   ├── 🖼️ gallery/              # 作品画廊
-│   │   └── page.tsx              # 历史生成记录展示
-│   │
-│   ├── 💰 pricing/              # 定价页面
-│   │   └── page.tsx              # 积分套餐展示
-│   │
-│   └── 🔌 api/                  # API Routes（后端接口）
-│       ├── auth/
-│       │   └── callback/
-│       │       └── route.ts      # Supabase Auth回调
-│       ├── generate/
-│       │   └── main/
-│       │       └── route.ts      # 主图生成接口
-│       ├── credits/
-│       │   └── route.ts          # 积分管理接口
-│       └── generations/
-│           └── route.ts          # 生成记录查询接口
+│   └── api/                      # API Routes
+│       ├── auth/callback/route.ts
+│       ├── generate/main/route.ts
+│       ├── credits/route.ts
+│       └── generations/route.ts
 │
-├── 🧩 components/ (React组件库)
-│   │
-│   ├── ui/                       # Shadcn/UI基础组件
-│   │   ├── button.tsx            # 按钮组件
-│   │   ├── card.tsx              # 卡片组件
-│   │   ├── input.tsx             # 输入框组件
-│   │   └── badge.tsx             # 徽章组件
+├── 🧩 components/                 # React组件
+│   ├── ui/                       # 基础UI组件
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── input.tsx
+│   │   └── badge.tsx
 │   │
 │   ├── layout/                   # 布局组件
-│   │   ├── header.tsx            # 全局顶部导航
-│   │   └── footer.tsx            # 全局底部
+│   │   ├── header.tsx
+│   │   └── footer.tsx
 │   │
-│   ├── workbench/                # 工作台专用组件
-│   │   ├── upload-zone.tsx       # 上传区（拖拽上传）
-│   │   └── config-panel.tsx      # 配置面板（模特/场景选择）
+│   ├── workbench/                # 工作台组件
+│   │   ├── upload-zone.tsx
+│   │   └── config-panel.tsx
 │   │
 │   └── common/                   # 通用组件
-│       └── credits-badge.tsx     # 积分显示徽章
+│       └── auth-dialog.tsx
 │
-├── 🔧 lib/ (工具库与业务逻辑)
-│   │
+├── 🔧 lib/                        # 工具库
 │   ├── supabase/                 # Supabase集成
-│   │   ├── client.ts             # 客户端实例（用于客户端组件）
-│   │   ├── server.ts             # 服务端实例（用于API/SSR）
-│   │   └── middleware.ts         # 中间件工具函数
+│   │   ├── client.ts
+│   │   ├── server.ts
+│   │   └── middleware.ts
 │   │
-│   ├── ai/                       # AI接口封装
-│   │   ├── gemini-client.ts      # Gemini API调用（兼容One API）
-│   │   └── prompt-builder.ts     # Prompt构建器
+│   ├── ai/                       # AI接口
+│   │   ├── gemini-client.ts      # OpenRouter调用
+│   │   └── prompt-builder.ts     # Prompt构建
 │   │
-│   ├── db/                       # 数据库操作层
-│   │   ├── profiles.ts           # 用户Profile CRUD
-│   │   └── generations.ts        # 生成记录 CRUD
+│   ├── db/                       # 数据库操作
+│   │   ├── profiles.ts
+│   │   └── generations.ts
 │   │
-│   └── utils.ts                  # 通用工具函数（cn等）
+│   └── utils.ts                  # 工具函数
 │
-├── ⚙️ config/ (配置中心)
-│   ├── site.ts                   # 网站基础配置（名称、描述、积分规则）
-│   ├── models.ts                 # AI模型配置（Gemini模型名称）
-│   └── presets.ts                # 预设配置（模特类型、场景列表）
+├── ⚙️ config/                     # 配置中心
+│   ├── site.ts                   # 站点配置
+│   ├── models.ts                 # AI模型配置
+│   └── presets.ts                # 预设配置
 │
-├── 📘 types/ (TypeScript类型定义)
-│   ├── database.ts               # Supabase数据库类型
-│   ├── generation.ts             # 生成相关类型
-│   └── user.ts                   # 用户相关类型
+├── 📘 types/                      # 类型定义
+│   ├── database.ts
+│   ├── generation.ts
+│   └── user.ts
 │
-├── 🪝 hooks/ (自定义React Hooks)
-│   ├── use-user.ts               # 用户信息Hook（含Profile）
-│   └── use-credits.ts            # 积分管理Hook
+├── 🪝 hooks/                      # React Hooks
+│   ├── use-user.ts
+│   └── use-credits.ts
 │
-└── 🗄️ supabase/ (数据库相关)
+└── 🗄️ supabase/                  # 数据库
     └── migrations/
-        └── 001_initial_schema.sql # 数据库初始化脚本
+        └── *.sql
 ```
 
 ---
 
-## 📋 核心文件说明
+## 🎨 设计系统
 
-### 🎯 入口与配置
+### 色彩
 
-| 文件 | 作用 |
-|------|------|
-| `app/layout.tsx` | 全局布局，引入字体、Provider |
-| `app/page.tsx` | Landing Page首页 |
-| `middleware.ts` | Supabase认证中间件 |
-| `next.config.js` | 配置图片域名、环境变量等 |
+| 变量 | 用途 | 值 |
+|------|------|-----|
+| `--primary` | 主色调 | Electric Violet |
+| `--secondary` | 强调色 | Cyan |
+| `--background` | 背景色 | Deep Space |
 
-### 🔐 认证系统
+### 组件样式
 
-| 文件 | 作用 |
-|------|------|
-| `app/(auth)/login/page.tsx` | 登录页面 |
-| `app/(auth)/register/page.tsx` | 注册页面 |
-| `app/api/auth/callback/route.ts` | OAuth回调处理 |
-| `lib/supabase/client.ts` | 客户端Supabase实例 |
-| `lib/supabase/server.ts` | 服务端Supabase实例 |
+- `glass-card` - 毛玻璃卡片
+- `btn-glow` - 发光按钮
+- `text-gradient` - 渐变文字
+- `upload-zone` - 上传区域
 
-### 🎨 核心业务
+### 字体
 
-| 文件 | 作用 |
-|------|------|
-| `app/workbench/page.tsx` | 工作台主页面 |
-| `components/workbench/upload-zone.tsx` | 拖拽上传组件 |
-| `components/workbench/config-panel.tsx` | 模特/场景选择面板 |
-| `app/api/generate/main/route.ts` | 图片生成API |
-
-### 🤖 AI集成
-
-| 文件 | 作用 |
-|------|------|
-| `lib/ai/gemini-client.ts` | Gemini API封装（OpenAI格式） |
-| `lib/ai/prompt-builder.ts` | 根据预设构建Prompt |
-| `config/models.ts` | 模型名称配置 |
-| `config/presets.ts` | 模特和场景预设库 |
-
-### 💾 数据层
-
-| 文件 | 作用 |
-|------|------|
-| `lib/db/profiles.ts` | 用户积分管理 |
-| `lib/db/generations.ts` | 生成记录CRUD |
-| `supabase/migrations/001_initial_schema.sql` | 数据库表结构 |
-| `types/database.ts` | 数据库类型定义 |
-
-### 🎁 UI组件
-
-| 文件 | 作用 |
-|------|------|
-| `components/ui/*` | Shadcn/UI基础组件库 |
-| `components/layout/header.tsx` | 全局导航栏（含积分显示） |
-| `components/common/credits-badge.tsx` | 积分徽章组件 |
+- 标题：Plus Jakarta Sans
+- 正文：Inter
+- 数字：JetBrains Mono
 
 ---
 
-## 🔄 数据流向
+## 🔌 技术栈
 
-### 用户注册流程
-```
-注册页面 (register/page.tsx)
-  ↓ 调用 Supabase Auth
-Supabase 触发器
-  ↓ 自动创建 Profile（赠送5积分）
-重定向到工作台
-```
+| 层级 | 技术 |
+|------|------|
+| 前端框架 | Next.js 14 (App Router) |
+| 样式方案 | Tailwind CSS |
+| 组件库 | Shadcn/UI |
+| 图标 | Lucide React |
+| 数据库 | Supabase (PostgreSQL) |
+| 认证 | Supabase Auth |
+| 存储 | Supabase Storage |
+| AI接口 | OpenRouter → Gemini |
 
-### 图片生成流程
-```
-工作台 (workbench/page.tsx)
-  ↓ 上传图片到 Supabase Storage
-  ↓ 提交生成请求
-API (/api/generate/main/route.ts)
-  ↓ 构建 Prompt (prompt-builder.ts)
-  ↓ 调用 Gemini API (gemini-client.ts)
-  ↓ 保存生成记录到数据库
-返回生成结果
-```
+---
 
-### 积分扣除流程
-```
-点击下载按钮
-  ↓ 调用 /api/credits
-检查余额
-  ↓ 扣除积分
-  ↓ 更新数据库
-返回新余额
+## 🚀 开发命令
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
+
+# 构建生产版本
+npm run build
+
+# 启动生产服务器
+npm start
 ```
 
 ---
 
-## 🚀 启动步骤
+## 🔐 环境变量
 
-1. **安装依赖**
-   ```bash
-   npm install
-   ```
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-2. **配置环境变量** (`.env.local`)
-   - Supabase URL 和 Key
-   - Gemini API Key 和 Base URL
+# OpenRouter
+OPENROUTER_API_KEY=
+OPENROUTER_API_BASE_URL=https://openrouter.ai/api/v1
 
-3. **初始化数据库**
-   - 在Supabase执行 `001_initial_schema.sql`
-
-4. **启动开发服务器**
-   ```bash
-   npm run dev
-   ```
-
-5. **访问应用**
-   - http://localhost:3000
-
----
-
-## 📌 关键设计决策
-
-### 为什么使用App Router？
-- ✅ 服务端组件默认，性能更好
-- ✅ 文件系统路由，结构清晰
-- ✅ 内置API Routes，前后端一体
-
-### 为什么使用Supabase？
-- ✅ PostgreSQL + Auth + Storage一站式
-- ✅ RLS (Row Level Security) 数据安全
-- ✅ 实时订阅能力（后续可扩展）
-
-### 为什么封装Gemini API？
-- ✅ 兼容One API（多模型统一调用）
-- ✅ 便于切换模型（主图用Pro，套图用Flash）
-- ✅ 统一错误处理和重试逻辑
-
----
-
-## 🎓 开发建议
-
-1. **添加新页面**：在 `app/` 下创建文件夹
-2. **添加新组件**：在 `components/` 相应分类下创建
-3. **添加新API**：在 `app/api/` 下创建 `route.ts`
-4. **修改预设**：编辑 `config/presets.ts`
-5. **调整样式**：修改 `tailwind.config.ts` 或组件内联样式
-
----
-
-<div align="center">
-  <strong>项目结构设计完成 ✅</strong>
-</div>
+# 站点
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```

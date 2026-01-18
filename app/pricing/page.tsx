@@ -1,34 +1,39 @@
-/**
- * 定价页面
- */
-
 'use client'
 
-import { Check } from 'lucide-react'
+import { Check, Sparkles, ArrowLeft, Zap, Crown, Building } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
 
 const PRICING_PLANS = [
   {
     name: '基础包',
+    icon: Zap,
     credits: 50,
     price: 49,
-    features: ['50积分', '可下载50张高清图', '有效期3个月', '标准生成速度'],
+    pricePerCredit: '0.98',
+    features: ['50 积分', '下载 50 张高清图', '有效期 3 个月', '标准生成速度'],
+    popular: false,
   },
   {
     name: '专业包',
+    icon: Crown,
     credits: 200,
     price: 159,
+    pricePerCredit: '0.80',
+    features: ['200 积分', '下载 200 张高清图', '有效期 6 个月', '优先生成速度', '邮件支持'],
     popular: true,
-    features: ['200积分', '可下载200张高清图', '有效期6个月', '优先生成速度', '邮件支持'],
   },
   {
     name: '企业包',
+    icon: Building,
     credits: 500,
     price: 349,
-    features: ['500积分', '可下载500张高清图', '有效期12个月', '最高优先级', '专属客服', 'API接入'],
+    pricePerCredit: '0.70',
+    features: ['500 积分', '下载 500 张高清图', '有效期 12 个月', '最高优先级', '专属客服', 'API 接入'],
+    popular: false,
   },
 ]
 
@@ -38,56 +43,99 @@ export default function PricingPage() {
       <Header />
       
       <main className="flex-1">
-        <section className="container py-20">
+        <section className="container py-12">
+          {/* 返回链接 */}
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            返回首页
+          </Link>
+
+          {/* 标题 */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">选择适合您的套餐</h1>
-            <p className="text-xl text-muted-foreground">
-              灵活的积分套餐，按需购买
+            <h1 className="text-3xl md:text-4xl font-display font-bold mb-4">
+              选择适合您的<span className="text-gradient">套餐</span>
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              灵活的积分套餐，用多少买多少，无隐藏费用
             </p>
           </div>
 
-          <div className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto">
+          {/* 价格卡片 */}
+          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
             {PRICING_PLANS.map((plan) => (
-              <Card
+              <div
                 key={plan.name}
-                className={plan.popular ? 'border-primary shadow-lg scale-105' : ''}
+                className={cn(
+                  "glass-card p-6 relative",
+                  plan.popular && "border-primary/50 md:scale-105"
+                )}
               >
                 {plan.popular && (
-                  <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-semibold rounded-t-lg">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-xs font-semibold text-white">
                     最受欢迎
                   </div>
                 )}
-                <CardHeader>
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <CardDescription>
-                    <span className="text-4xl font-bold text-foreground">¥{plan.price}</span>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button className="w-full" variant={plan.popular ? 'default' : 'outline'}>
-                    立即购买
-                  </Button>
-                </CardContent>
-              </Card>
+
+                {/* 图标和名称 */}
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    plan.popular ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                  )}>
+                    <plan.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-xl font-semibold">{plan.name}</h3>
+                </div>
+
+                {/* 价格 */}
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold font-mono">¥{plan.price}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    约 ¥{plan.pricePerCredit}/张
+                  </p>
+                </div>
+
+                {/* 功能列表 */}
+                <ul className="space-y-3 mb-6">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* 购买按钮 */}
+                <Button 
+                  className={cn(
+                    "w-full",
+                    plan.popular && "btn-glow"
+                  )} 
+                  variant={plan.popular ? 'default' : 'outline'}
+                >
+                  立即购买
+                </Button>
+              </div>
             ))}
           </div>
 
+          {/* 企业定制 */}
           <div className="mt-16 text-center">
-            <h3 className="text-2xl font-bold mb-4">需要更多积分？</h3>
-            <p className="text-muted-foreground mb-6">
-              联系我们定制企业专属方案
-            </p>
-            <Button variant="outline" size="lg">
-              联系销售
-            </Button>
+            <div className="glass-card p-8 max-w-2xl mx-auto">
+              <h3 className="text-xl font-semibold mb-2">需要更多积分？</h3>
+              <p className="text-muted-foreground mb-6">
+                联系我们定制企业专属方案，享受更优惠的价格
+              </p>
+              <Button variant="outline" size="lg" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                联系销售
+              </Button>
+            </div>
           </div>
         </section>
       </main>

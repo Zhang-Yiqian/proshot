@@ -1,16 +1,10 @@
-/**
- * 认证弹窗组件
- * 当未登录用户点击生成时显示
- */
-
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Mail, Lock, Sparkles, Loader2 } from 'lucide-react'
+import { X, Mail, Lock, Sparkles, Loader2, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { siteConfig } from '@/config/site'
 
@@ -39,7 +33,6 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
 
     try {
       if (mode === 'register') {
-        // 注册
         if (password !== confirmPassword) {
           setError('两次输入的密码不一致')
           setLoading(false)
@@ -56,25 +49,20 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/api/auth/callback`,
           },
         })
 
         if (error) throw error
-
-        // 注册成功，关闭弹窗，刷新页面
         onClose()
         router.refresh()
       } else {
-        // 登录
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
 
         if (error) throw error
-
-        // 登录成功，关闭弹窗，刷新页面
         onClose()
         router.refresh()
       }
@@ -87,141 +75,135 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
 
   return (
     <>
-      {/* 遮罩层 */}
+      {/* 遮罩 */}
       <div 
-        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
       
-      {/* 弹窗内容 */}
-      <div className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
-        <Card>
-          <CardHeader className="relative">
-            <button
-              onClick={onClose}
-              className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary">
-              <Sparkles className="h-6 w-6 text-primary-foreground" />
+      {/* 弹窗 */}
+      <div className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md animate-scale-in">
+        <div className="glass-card p-6 mx-4">
+          {/* 关闭按钮 */}
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          
+          {/* 头部 */}
+          <div className="text-center mb-6">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary">
+              <Sparkles className="h-7 w-7 text-white" />
             </div>
             
-            <CardTitle className="text-2xl text-center">
-              {mode === 'register' ? '注册账户' : '登录账户'}
-            </CardTitle>
-            <CardDescription className="text-center">
-              {mode === 'register' 
-                ? `免费注册，获得 ${siteConfig.initialCredits} 积分`
-                : '登录以继续使用'
-              }
-            </CardDescription>
-          </CardHeader>
+            <h2 className="text-2xl font-display font-bold mb-2">
+              {mode === 'register' ? '创建账户' : '欢迎回来'}
+            </h2>
+            
+            {mode === 'register' && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm">
+                <Gift className="h-3.5 w-3.5" />
+                <span>注册即送 {siteConfig.credits.initial} 积分</span>
+              </div>
+            )}
+          </div>
           
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="dialog-email" className="text-sm font-medium">
-                  邮箱
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="dialog-email"
-                    type="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-9"
-                    required
-                  />
-                </div>
+          {/* 表单 */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">邮箱</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  required
+                />
               </div>
+            </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium">密码</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="password"
+                  placeholder={mode === 'register' ? '至少6位字符' : '输入密码'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            {mode === 'register' && (
               <div className="space-y-2">
-                <label htmlFor="dialog-password" className="text-sm font-medium">
-                  密码
-                </label>
+                <label className="text-sm font-medium">确认密码</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="dialog-password"
                     type="password"
-                    placeholder={mode === 'register' ? '至少6位字符' : '输入密码'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9"
+                    placeholder="再次输入密码"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10"
                     required
                   />
                 </div>
               </div>
+            )}
 
-              {mode === 'register' && (
-                <div className="space-y-2">
-                  <label htmlFor="dialog-confirm" className="text-sm font-medium">
-                    确认密码
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="dialog-confirm"
-                      type="password"
-                      placeholder="再次输入密码"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-9"
-                      required
-                    />
-                  </div>
-                </div>
-              )}
+            {error && (
+              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+                {error}
+              </div>
+            )}
 
-              {error && (
-                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {mode === 'register' ? '注册中...' : '登录中...'}
-                  </>
-                ) : (
-                  mode === 'register' ? '注册并继续' : '登录并继续'
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center text-sm">
-              {mode === 'register' ? (
+            <Button type="submit" className="w-full btn-glow" disabled={loading}>
+              {loading ? (
                 <>
-                  已有账户？{' '}
-                  <button
-                    type="button"
-                    onClick={() => setMode('login')}
-                    className="text-primary font-medium hover:underline"
-                  >
-                    立即登录
-                  </button>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {mode === 'register' ? '注册中...' : '登录中...'}
                 </>
               ) : (
-                <>
-                  还没有账户？{' '}
-                  <button
-                    type="button"
-                    onClick={() => setMode('register')}
-                    className="text-primary font-medium hover:underline"
-                  >
-                    立即注册
-                  </button>
-                </>
+                mode === 'register' ? '注册并继续' : '登录'
               )}
-            </div>
-          </CardContent>
-        </Card>
+            </Button>
+          </form>
+
+          {/* 切换模式 */}
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            {mode === 'register' ? (
+              <>
+                已有账户？{' '}
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="text-primary font-medium hover:underline"
+                >
+                  立即登录
+                </button>
+              </>
+            ) : (
+              <>
+                还没有账户？{' '}
+                <button
+                  type="button"
+                  onClick={() => setMode('register')}
+                  className="text-primary font-medium hover:underline"
+                >
+                  免费注册
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </>
   )

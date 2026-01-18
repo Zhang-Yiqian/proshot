@@ -1,7 +1,3 @@
-/**
- * 用户信息Hook
- */
-
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -17,13 +13,11 @@ export function useUser() {
   const supabase = createClient()
 
   useEffect(() => {
-    // 获取当前用户
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
 
       if (user) {
-        // 获取用户Profile
         const { data: profileData } = await supabase
           .from('profiles')
           .select('*')
@@ -32,11 +26,11 @@ export function useUser() {
 
         if (profileData) {
           setProfile({
-            id: profileData.id,
-            credits: profileData.credits,
-            isSubscriber: profileData.is_subscriber,
-            createdAt: profileData.created_at,
-            updatedAt: profileData.updated_at,
+            id: (profileData as any).id,
+            credits: (profileData as any).credits,
+            isSubscriber: (profileData as any).is_subscriber,
+            createdAt: (profileData as any).created_at,
+            updatedAt: (profileData as any).updated_at,
           })
         }
       }
@@ -46,7 +40,6 @@ export function useUser() {
 
     getUser()
 
-    // 监听认证状态变化
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setUser(session?.user ?? null)
@@ -60,11 +53,11 @@ export function useUser() {
 
           if (profileData) {
             setProfile({
-              id: profileData.id,
-              credits: profileData.credits,
-              isSubscriber: profileData.is_subscriber,
-              createdAt: profileData.created_at,
-              updatedAt: profileData.updated_at,
+              id: (profileData as any).id,
+              credits: (profileData as any).credits,
+              isSubscriber: (profileData as any).is_subscriber,
+              createdAt: (profileData as any).created_at,
+              updatedAt: (profileData as any).updated_at,
             })
           }
         } else {

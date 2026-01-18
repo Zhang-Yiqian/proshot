@@ -1,11 +1,11 @@
 /**
- * 主图生成API
+ * 主图生成 API
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { generateMainImage } from '@/lib/ai/gemini-client'
-import { buildPrompt } from '@/lib/ai/prompt-builder'
+import { generateClothingImage, generateProductImage } from '@/lib/ai/gemini-client'
+import { SCENE_PRESETS } from '@/config/presets'
 import { createGeneration, updateGenerationStatus } from '@/lib/db/generations'
 import { getUserProfile, createUserProfile } from '@/lib/db/profiles'
 
@@ -19,10 +19,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: '未登录' }, { status: 401 })
     }
 
-    // 确保用户 Profile 存在（如果触发器没有工作，这里会自动创建）
+    // 确保 Profile 存在
     let profile = await getUserProfile(user.id)
     if (!profile) {
-      console.log(`用户 ${user.id} 的 Profile 不存在，正在创建...`)
       profile = await createUserProfile(user.id)
       if (!profile) {
         return NextResponse.json(
@@ -33,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 解析请求
-    const { originalImageUrl, sceneType, additionalPrompt } = await request.json()
+    const { originalImageUrl, sceneType, mode = 'clothing' } = await request.json()
 
     if (!originalImageUrl || !sceneType) {
       return NextResponse.json(
@@ -42,18 +41,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 构建Prompt
-    const prompt = buildPrompt({
-      sceneType,
-      additionalPrompt,
-    })
+    // 获取场景名称
+    const scene = SCENE_PRESETS.find(s => s.id === sceneType)
+    const sceneName = scene?.name || '极简白底'
 
     // 创建生成记录
     const generation = await createGeneration({
       userId: user.id,
       originalImageUrl,
-      promptUsed: prompt,
-      stylePreset: `asian-female-${sceneType}`, // 固定使用亚洲女性模特
+      promptUsed: `${mode}-${sceneType}`,
+      stylePreset: `${mode}-${sceneType}`,
     })
 
     if (!generation) {
@@ -63,11 +60,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 调用AI生成
-    const result = await generateMainImage(prompt, originalImageUrl)
+    // 调用 AI 生成
+    const result = mode === 'product'
+      ? await generateProductImage(originalImageUrl, sceneName)
+      : await generateClothingImage(originalImageUrl, sceneName)
 
     if (result.success && result.imageUrl) {
-      // 更新记录为完成
       await updateGenerationStatus(generation.id, 'completed', result.imageUrl)
 
       return NextResponse.json({
@@ -76,7 +74,6 @@ export async function POST(request: NextRequest) {
         imageUrl: result.imageUrl,
       })
     } else {
-      // 更新记录为失败
       await updateGenerationStatus(generation.id, 'failed', undefined, result.error)
 
       return NextResponse.json(

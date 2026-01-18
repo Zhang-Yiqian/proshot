@@ -1,57 +1,38 @@
-/**
- * 全局底部组件
- */
+'use client'
 
 import Link from 'next/link'
-import { siteConfig } from '@/config/site'
+import { Sparkles } from 'lucide-react'
 
 export function Footer() {
   return (
-    <footer className="border-t bg-background">
+    <footer className="border-t border-border/40 bg-background/50 backdrop-blur-sm">
       <div className="container py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="col-span-1 md:col-span-2">
-            <h3 className="font-bold text-lg mb-2">{siteConfig.name}</h3>
-            <p className="text-sm text-muted-foreground max-w-md">
-              {siteConfig.description}
-            </p>
-          </div>
-          
-          <div>
-            <h4 className="font-semibold mb-3">产品</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/workbench" className="hover:text-primary transition-colors">
-                  工作台
-                </Link>
-              </li>
-              <li>
-                <Link href="/pricing" className="hover:text-primary transition-colors">
-                  定价
-                </Link>
-              </li>
-            </ul>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-6 h-6 rounded bg-gradient-to-br from-primary to-secondary">
+              <Sparkles className="h-3 w-3 text-white" />
+            </div>
+            <span className="font-display font-semibold">ProShot</span>
           </div>
 
-          <div>
-            <h4 className="font-semibold mb-3">支持</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>
-                <Link href="/docs" className="hover:text-primary transition-colors">
-                  帮助文档
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-primary transition-colors">
-                  联系我们
-                </Link>
-              </li>
-            </ul>
+          {/* 链接 */}
+          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link href="/about" className="hover:text-foreground transition-colors">
+              关于我们
+            </Link>
+            <Link href="/pricing" className="hover:text-foreground transition-colors">
+              价格方案
+            </Link>
+            <a href="mailto:support@proshot.ai" className="hover:text-foreground transition-colors">
+              联系我们
+            </a>
           </div>
-        </div>
 
-        <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
+          {/* 版权 */}
+          <p className="text-sm text-muted-foreground">
+            © 2024 ProShot. Powered by Gemini.
+          </p>
         </div>
       </div>
     </footer>

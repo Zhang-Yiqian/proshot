@@ -1,263 +1,145 @@
 /**
- * Gemini AI客户端封装
- * 适配 OpenRouter 平台，支持 Gemini 3 Pro Image Preview 模型
- * OpenRouter 使用 OpenAI 兼容的多模态接口格式
- * 参考文档：https://openrouter.ai/docs/quickstart
+ * OpenRouter AI 客户端
+ * 通过 OpenRouter 调用 Gemini 图像生成模型
  */
 
 import { AI_MODELS, MODEL_CONFIG } from '@/config/models'
 
-export interface GeminiGenerateOptions {
-  model: string
+interface GenerateOptions {
   prompt: string
-  imageUrl?: string // 参考图URL（白底图）
-  temperature?: number
-  topP?: number
-  maxTokens?: number
-  aspectRatio?: string // 图片宽高比，如 "3:4"
-  imageSize?: "1K" | "2K" | "4K" // 图片分辨率
+  imageUrl?: string
+  model?: string
 }
 
-export interface GeminiResponse {
+interface GenerateResult {
   success: boolean
-  imageUrl?: string // base64 data URL 或 HTTP URL
+  imageUrl?: string
   error?: string
 }
 
 /**
- * 调用Gemini模型生成图片
- * 使用 OpenRouter 的 /api/v1/chat/completions 端点
- * 
- * OpenRouter 对于 Gemini 图像生成：
- * - 使用 chat/completions 端点
- * - 需要设置 modalities: ["image", "text"]
- * - 支持 image_config 参数配置图片尺寸和宽高比
- * - 消息中包含文本和图片（多模态格式）
- * - 响应中的图片在 choices[0].message.images 数组中
+ * 调用 OpenRouter 生成图片
  */
-export async function generateImage(
-  options: GeminiGenerateOptions
-): Promise<GeminiResponse> {
+export async function generateImage(options: GenerateOptions): Promise<GenerateResult> {
+  const { prompt, imageUrl, model = AI_MODELS.MAIN_IMAGE } = options
+
+  // Mock 模式处理
+  if (MODEL_CONFIG.mockMode) {
+    console.log('[AI Client] Mock 模式已开启，返回固定图片')
+    // 模拟网络延迟
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    return {
+      success: true,
+      imageUrl: MODEL_CONFIG.mockImageUrl
+    }
+  }
+
+  if (!MODEL_CONFIG.apiKey) {
+    return { success: false, error: 'OpenRouter API Key 未配置' }
+  }
+
   try {
-    const { 
-      model, 
-      prompt, 
-      imageUrl, 
-      temperature, 
-      topP,
-      aspectRatio = MODEL_CONFIG.imageConfig.aspectRatio,
-      imageSize = MODEL_CONFIG.imageConfig.imageSize,
-    } = options
-
-    // 验证配置
-    if (!MODEL_CONFIG.apiBaseUrl || !MODEL_CONFIG.apiKey) {
-      throw new Error('OpenRouter 配置缺失，请检查环境变量 OPENROUTER_API_BASE_URL 和 OPENROUTER_API_KEY')
-    }
-
-    // 构建多模态消息（OpenRouter 格式）
-    const messages: any[] = []
-
-    // 如果有参考图（白底图），构建包含图片的消息
+    // 构建消息
+    const content: any[] = []
+    
     if (imageUrl) {
-      messages.push({
-        role: 'user',
-        content: [
-          {
-            type: 'image_url',
-            image_url: {
-              url: imageUrl, // 支持 HTTP URL 或 base64 data URL
-            },
-          },
-          {
-            type: 'text',
-            text: prompt,
-          },
-        ],
-      })
-    } else {
-      // 只有文本提示
-      messages.push({
-        role: 'user',
-        content: prompt,
+      content.push({
+        type: 'image_url',
+        image_url: { url: imageUrl },
       })
     }
-
-    // 构建请求体（OpenRouter OpenAI 兼容格式）
-    const requestBody: any = {
-      model: model,
-      messages: messages,
-      modalities: ['image', 'text'], // 必须设置，用于生成图片
-      stream: false,
-    }
-
-    // 添加图片配置（Gemini 图像生成模型支持）
-    requestBody.image_config = {
-      aspect_ratio: aspectRatio,
-      image_size: imageSize,
-    }
-
-    // 添加生成参数
-    if (temperature !== undefined) {
-      requestBody.temperature = temperature
-    }
-    if (topP !== undefined) {
-      requestBody.top_p = topP
-    }
-
-    // 构建完整的 API URL
-    const apiUrl = `${MODEL_CONFIG.apiBaseUrl.replace(/\/$/, '')}/chat/completions`
-
-    console.log('[Gemini Client] 调用 OpenRouter:', {
-      url: apiUrl,
-      model: model,
-      hasImage: !!imageUrl,
-      promptLength: prompt.length,
-      aspectRatio,
-      imageSize,
+    
+    content.push({
+      type: 'text',
+      text: prompt,
     })
 
-    // 调用 OpenRouter 的 chat/completions 端点
-    const response = await fetch(apiUrl, {
+    const response = await fetch(`${MODEL_CONFIG.apiBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${MODEL_CONFIG.apiKey}`,
-        // 可选：用于 OpenRouter 排行榜显示
         'HTTP-Referer': MODEL_CONFIG.siteUrl,
         'X-Title': MODEL_CONFIG.siteName,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content }],
+        modalities: ['image', 'text'],
+        image_config: {
+          aspect_ratio: MODEL_CONFIG.imageConfig.aspectRatio,
+          image_size: MODEL_CONFIG.imageConfig.imageSize,
+        },
+        temperature: MODEL_CONFIG.defaultParams.temperature,
+        top_p: MODEL_CONFIG.defaultParams.topP,
+      }),
     })
 
     if (!response.ok) {
-      const errorText = await response.text()
-      let errorMessage = `API请求失败: ${response.status}`
-      
-      try {
-        const errorData = JSON.parse(errorText)
-        errorMessage = errorData.error?.message || errorData.message || errorMessage
-        
-        // 记录详细错误信息
-        console.error('[Gemini Client] API错误:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-        })
-      } catch {
-        errorMessage = errorText || errorMessage
-        console.error('[Gemini Client] API错误（无法解析JSON）:', errorText)
-      }
-      
-      throw new Error(errorMessage)
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`)
     }
 
     const data = await response.json()
-
-    console.log('[Gemini Client] API响应:', {
-      hasChoices: !!data.choices,
-      choicesLength: data.choices?.length,
-      hasImages: !!data.choices?.[0]?.message?.images,
-      imagesCount: data.choices?.[0]?.message?.images?.length || 0,
-    })
-
-    // 解析响应（OpenRouter 返回格式）
-    // 图片在 choices[0].message.images 数组中
-    // 格式：{ type: "image_url", image_url: { url: "data:image/png;base64,..." } }
-    if (data.choices && data.choices[0]?.message) {
-      const message = data.choices[0].message
-      
-      // 检查 images 字段（OpenRouter 标准格式）
-      if (message.images && Array.isArray(message.images) && message.images.length > 0) {
-        const firstImage = message.images[0]
-        const imageUrl = firstImage.image_url?.url || firstImage.imageUrl?.url
-        
-        if (imageUrl) {
-          return {
-            success: true,
-            imageUrl: imageUrl, // base64 data URL
-          }
-        }
+    
+    // 解析响应中的图片
+    const message = data.choices?.[0]?.message
+    
+    // 检查 images 数组
+    if (message?.images?.[0]) {
+      const img = message.images[0]
+      const url = img.image_url?.url || img.imageUrl?.url
+      if (url) {
+        return { success: true, imageUrl: url }
       }
-      
-      // 兼容处理：检查 content 字段（某些情况下可能包含图片）
-      if (message.content) {
-        const content = message.content
-        
-        // 检查是否是base64图片
-        if (typeof content === 'string' && content.startsWith('data:image/')) {
-          return {
-            success: true,
-            imageUrl: content,
-          }
-        }
-        
-        // 检查是否是HTTP URL
-        if (typeof content === 'string' && (content.startsWith('http://') || content.startsWith('https://'))) {
-          return {
-            success: true,
-            imageUrl: content,
-          }
-        }
-      }
-      
-      // 如果都没有匹配，记录详细日志
-      console.warn('[Gemini Client] 无法解析图片URL，响应内容:', {
-        message: message,
-        fullResponse: JSON.stringify(data).substring(0, 1000),
-      })
-      
-      throw new Error('API返回格式不符合预期，未找到图片。请检查响应中的 images 字段。')
     }
     
-    // 如果都没有匹配，记录完整响应
-    console.error('[Gemini Client] 无法解析响应:', JSON.stringify(data, null, 2))
-    throw new Error('API返回格式错误，无法解析图片URL')
+    // 检查 content 是否是图片
+    if (typeof message?.content === 'string') {
+      if (message.content.startsWith('data:image/') || 
+          message.content.startsWith('http')) {
+        return { success: true, imageUrl: message.content }
+      }
+    }
+
+    throw new Error('无法从响应中解析图片')
   } catch (error) {
-    console.error('[Gemini Client] 调用失败:', error)
+    console.error('[AI Client] 生成失败:', error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : '未知错误',
+      error: error instanceof Error ? error.message : '生成失败',
     }
   }
 }
 
 /**
- * 生成主图（使用 google/gemini-3-pro-image-preview）
+ * 生成服装上身图
  */
-export async function generateMainImage(
-  prompt: string,
-  referenceImageUrl: string
-): Promise<GeminiResponse> {
+export async function generateClothingImage(
+  referenceImageUrl: string,
+  sceneType: string
+): Promise<GenerateResult> {
+  const prompt = `你是一个人像摄影大师，请你帮我把上传的白底图中的衣服穿在一个亚洲模特身上，所在的场景是${sceneType}。要求：1. 保持衣服的款式、颜色、细节完全一致；2. 模特姿态自然优美；3. 光线和场景融合自然。`
+  
   return generateImage({
-    model: AI_MODELS.MAIN_IMAGE,
     prompt,
     imageUrl: referenceImageUrl,
-    temperature: MODEL_CONFIG.defaultParams.temperature,
-    topP: MODEL_CONFIG.defaultParams.topP,
-    aspectRatio: MODEL_CONFIG.imageConfig.aspectRatio,
-    imageSize: MODEL_CONFIG.imageConfig.imageSize,
+    model: AI_MODELS.MAIN_IMAGE,
   })
 }
 
 /**
- * 扩展套图（使用 google/gemini-2.5-flash-image-preview）
+ * 生成物品场景图（预留）
  */
-export async function expandImages(
-  prompt: string,
+export async function generateProductImage(
   referenceImageUrl: string,
-  count: number = 4
-): Promise<GeminiResponse[]> {
-  const promises = Array.from({ length: count }, () =>
-    generateImage({
-      model: AI_MODELS.EXPAND_IMAGE,
-      prompt,
-      imageUrl: referenceImageUrl,
-      temperature: MODEL_CONFIG.defaultParams.temperature,
-      topP: MODEL_CONFIG.defaultParams.topP,
-      aspectRatio: MODEL_CONFIG.imageConfig.aspectRatio,
-      imageSize: MODEL_CONFIG.imageConfig.imageSize,
-    })
-  )
-
-  return Promise.all(promises)
+  sceneType: string
+): Promise<GenerateResult> {
+  const prompt = `你是一个产品摄影大师，请把上传的产品图放置到${sceneType}场景中。要求：1. 保持产品外观完全一致；2. 场景布置美观自然；3. 光影效果专业。`
+  
+  return generateImage({
+    prompt,
+    imageUrl: referenceImageUrl,
+    model: AI_MODELS.MAIN_IMAGE,
+  })
 }

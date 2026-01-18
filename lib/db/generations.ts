@@ -24,7 +24,7 @@ export async function createGeneration(data: {
       prompt_used: data.promptUsed,
       style_preset: data.stylePreset,
       status: 'pending',
-    })
+    } as any)
     .select()
     .single()
 
@@ -47,7 +47,7 @@ export async function updateGenerationStatus(
 ): Promise<boolean> {
   const supabase = createClient()
 
-  const updateData: any = {
+  const updateData: Record<string, any> = {
     status,
     updated_at: new Date().toISOString(),
   }
@@ -62,7 +62,7 @@ export async function updateGenerationStatus(
 
   const { error } = await supabase
     .from('generations')
-    .update(updateData)
+    .update(updateData as any)
     .eq('id', id)
 
   return !error

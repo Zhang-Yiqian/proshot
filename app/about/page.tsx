@@ -1,13 +1,9 @@
-/**
- * 关于页面 - 展示产品介绍和功能特点
- */
+'use client'
 
-import Link from 'next/link'
-import { ArrowRight, Sparkles, Zap, Shield, TrendingUp } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { ArrowLeft, Sparkles, Zap, Heart, Shield } from 'lucide-react'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import Link from 'next/link'
 
 export default function AboutPage() {
   return (
@@ -15,127 +11,77 @@ export default function AboutPage() {
       <Header />
       
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="container py-20">
-          <div className="mx-auto max-w-4xl text-center">
-            <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl">
-              关于 ProShot 上镜
-            </h1>
-            
-            <p className="mb-8 text-xl text-muted-foreground max-w-2xl mx-auto">
-              将普通的人台图、平铺图，低成本转化为高质量的真人模特营销图。
-              专为淘宝、拼多多、Shopify卖家打造。
-            </p>
-            
-            <Link href="/">
-              <Button size="lg" className="gap-2">
-                立即体验
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </section>
+        <section className="container py-12 max-w-3xl">
+          {/* 返回链接 */}
+          <Link 
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            返回首页
+          </Link>
 
-        {/* Features Section */}
-        <section className="container py-20 bg-muted/50">
-          <div className="mx-auto max-w-5xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">为什么选择ProShot？</h2>
-              <p className="text-lg text-muted-foreground">
-                专业的AI技术，极简的操作体验
+          {/* 标题 */}
+          <div className="text-center mb-12">
+            <h1 className="text-3xl md:text-4xl font-display font-bold mb-4">
+              关于 <span className="text-gradient">ProShot</span>
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              让每个电商卖家都能拥有专业级商拍
+            </p>
+          </div>
+
+          {/* 内容 */}
+          <div className="glass-card p-8 space-y-8">
+            <div>
+              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                我们的使命
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                ProShot（上镜）致力于用 AI 技术革新电商商拍流程。我们相信，每个中小卖家都应该能够以极低的成本，获得专业级的产品营销图。
               </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <Zap className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle>极速生成</CardTitle>
-                  <CardDescription>
-                    基于Google Gemini最先进大模型，30秒内完成高质量图片生成
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+            <div>
+              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                <Zap className="h-5 w-5 text-secondary" />
+                技术驱动
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                我们采用 Google Gemini 最先进的多模态大模型，结合自研的 Prompt 工程，确保生成的图片既美观又真实，高度还原商品细节。
+              </p>
+            </div>
 
-              <Card>
-                <CardHeader>
-                  <Shield className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle>还原度高</CardTitle>
-                  <CardDescription>
-                    精准保留商品Logo、版型、细节，不会出现变形
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+            <div>
+              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                <Heart className="h-5 w-5 text-pink-500" />
+                用户至上
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                我们深知电商卖家的痛点：传统商拍成本高、周期长、效果不可控。ProShot 提供"先体验，后付费"的模式，让您在看到效果后再做决定。
+              </p>
+            </div>
 
-              <Card>
-                <CardHeader>
-                  <TrendingUp className="h-10 w-10 text-primary mb-2" />
-                  <CardTitle>成本低廉</CardTitle>
-                  <CardDescription>
-                    告别昂贵的模特拍摄，1积分即可下载高清大图
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+            <div>
+              <h2 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-green-500" />
+                隐私保护
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                您上传的图片仅用于生成服务，我们承诺不会将您的商品图片用于任何其他用途。您可以随时删除您的生成记录和原始图片。
+              </p>
             </div>
           </div>
-        </section>
 
-        {/* How It Works */}
-        <section className="container py-20">
-          <div className="mx-auto max-w-5xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">简单三步，完成商拍</h2>
-            </div>
-
-            <div className="grid gap-8 md:grid-cols-3">
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xl">
-                  1
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">上传商品图</h3>
-                <p className="text-muted-foreground">
-                  上传人台图或平铺图，支持拖拽上传
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xl">
-                  2
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">选择风格</h3>
-                <p className="text-muted-foreground">
-                  选择模特类型和场景风格，一键配置
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold text-xl">
-                  3
-                </div>
-                <h3 className="mb-2 text-xl font-semibold">下载高清图</h3>
-                <p className="text-muted-foreground">
-                  预览满意后，消耗积分下载高清大图
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="container py-20 bg-primary text-primary-foreground">
-          <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-3xl font-bold mb-4">
-              立即体验ProShot，提升您的电商销量
-            </h2>
-            <p className="text-lg mb-8 opacity-90">
-              加入数千家电商卖家，让商品照片更吸引人
+          {/* 联系方式 */}
+          <div className="mt-12 text-center">
+            <p className="text-muted-foreground">
+              有任何问题或建议？请联系我们：
+              <a href="mailto:support@proshot.ai" className="text-primary hover:underline ml-1">
+                support@proshot.ai
+              </a>
             </p>
-            <Link href="/register">
-              <Button size="lg" variant="secondary" className="gap-2">
-                免费注册，获得5积分
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
           </div>
         </section>
       </main>
