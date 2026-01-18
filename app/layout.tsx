@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN" className="dark">
+    <html lang="zh-CN" className="light" style={{ colorScheme: 'light' }}>
       <body className="font-sans antialiased">
         {/* 背景效果 */}
         <div className="fixed inset-0 bg-grid pointer-events-none" />

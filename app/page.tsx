@@ -1,18 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles, Loader2, Shirt, Package, ArrowRight, Zap, Download, Gift } from 'lucide-react'
+import { Sparkles, Loader2, Shirt, Package, Download, Gift, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
-import { UploadZone } from '@/components/workbench/upload-zone'
-import { ConfigPanel } from '@/components/workbench/config-panel'
 import { AuthDialog } from '@/components/common/auth-dialog'
 import { useUser } from '@/hooks/use-user'
 import { createClient } from '@/lib/supabase/client'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
+import { SCENE_PRESETS } from '@/config/presets'
+import { MODEL_CONFIG } from '@/config/models'
 
 type GenerationMode = 'clothing' | 'product'
 
@@ -31,12 +30,14 @@ export default function HomePage() {
   const [generatedImage, setGeneratedImage] = useState<string>('')
   const [multiPoseImages, setMultiPoseImages] = useState<string[]>([])
   const [generatingMultiPose, setGeneratingMultiPose] = useState(false)
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0) // 当前选中的图片索引
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
     setPreviewUrl(URL.createObjectURL(file))
     setGeneratedImage('') // 清除之前的生成结果
     setMultiPoseImages([])
+    setSelectedImageIndex(0)
   }
 
   const handleClear = () => {
@@ -47,11 +48,12 @@ export default function HomePage() {
     }
     setGeneratedImage('')
     setMultiPoseImages([])
+    setSelectedImageIndex(0)
   }
 
   const handleGenerate = async () => {
     // 未登录时弹出注册框
-    if (!user) {
+    if (!user && !MODEL_CONFIG.mockMode) {
       setShowAuthDialog(true)
       return
     }
@@ -61,22 +63,39 @@ export default function HomePage() {
     setGenerating(true)
     setGeneratedImage('')
     setMultiPoseImages([])
+    setSelectedImageIndex(0)
+    
+    console.log('[Workbench] 开始生成...', { mode, selectedScene, mockMode: MODEL_CONFIG.mockMode })
+    
     try {
-      // 上传图片
-      const fileExt = selectedFile.name.split('.').pop()
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`
-      
-      const { error: uploadError } = await supabase.storage
-        .from('originals')
-        .upload(fileName, selectedFile)
+      let publicUrl = ''
 
-      if (uploadError) throw uploadError
+      if (MODEL_CONFIG.mockMode) {
+        console.log('[Workbench] Mock 模式：使用虚拟 URL')
+        publicUrl = 'https://mock-url.com/original.jpg'
+      } else {
+        console.log('[Workbench] 正常模式：正在上传图片到 Supabase...')
+        const fileExt = selectedFile.name.split('.').pop()
+        const fileName = `${user?.id || 'guest'}/${Date.now()}.${fileExt}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from('originals')
+          .upload(fileName, selectedFile)
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('originals')
-        .getPublicUrl(fileName)
+        if (uploadError) {
+          console.error('[Workbench] 上传失败:', uploadError)
+          throw uploadError
+        }
 
-      // 调用生成 API
+        const { data } = supabase.storage
+          .from('originals')
+          .getPublicUrl(fileName)
+        
+        publicUrl = data.publicUrl
+        console.log('[Workbench] 上传成功，Public URL:', publicUrl)
+      }
+
+      console.log('[Workbench] 正在请求生成 API...')
       const response = await fetch('/api/generate/main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,17 +106,22 @@ export default function HomePage() {
         }),
       })
 
+      console.log('[Workbench] API 响应状态:', response.status)
       const result = await response.json()
+      console.log('[Workbench] API 响应数据:', result)
 
       if (result.success) {
         setGeneratedImage(result.imageUrl)
+        console.log('[Workbench] 生成成功！')
       } else {
+        console.error('[Workbench] 生成失败:', result.error)
         alert(result.error || '生成失败，请重试')
       }
     } catch (error) {
-      console.error('生成失败:', error)
-      alert('生成失败，请稍后重试')
+      console.error('[Workbench] 发生异常:', error)
+      alert('生成失败: ' + (error instanceof Error ? error.message : '未知错误'))
     } finally {
+      console.log('[Workbench] 生成流程结束')
       setGenerating(false)
     }
   }
@@ -119,10 +143,6 @@ export default function HomePage() {
 
       if (result.success && result.imageUrls) {
         setMultiPoseImages(result.imageUrls)
-        // 滚动到多视角图区域
-        setTimeout(() => {
-          document.getElementById('multi-pose-results')?.scrollIntoView({ behavior: 'smooth' })
-        }, 100)
       } else {
         alert(result.error || '生成多视角图失败')
       }
@@ -134,33 +154,36 @@ export default function HomePage() {
     }
   }
 
+  // 构建显示图片列表（主图 + 多视角图）
+  const allImages = generatedImage ? [generatedImage, ...multiPoseImages] : []
+
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-app">
       <Header />
       
-      <main className="flex-1">
-        {/* Hero 区域 */}
-        <section className="container py-8 md:py-12">
-          {/* 标题 */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-4">
-              <span className="text-gradient">一键上镜</span>
-              <span className="text-foreground">，让商品更出众</span>
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              上传商品图，AI 秒变专业商拍。告别高成本，拥抱高效率。
-            </p>
-          </div>
+      {/* Workbench Layout - 左右分栏，无滚动 */}
+      <main className="flex-1 flex overflow-hidden">
+        {/* ========== 左侧配置栏 ========== */}
+        <aside className="w-[360px] h-full border-r border-divider bg-sidebar overflow-y-auto scrollbar-thin">
+          <div className="p-6 space-y-6">
+            {/* 标题 */}
+            <div>
+              <h1 className="text-2xl font-semibold mb-2 bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                一键上镜
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                上传商品图，AI 秒变专业商拍
+              </p>
+            </div>
 
-          {/* 模式切换 */}
-          <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center p-1 rounded-xl bg-muted/50 backdrop-blur-sm border border-border/50">
+            {/* 模式切换 */}
+            <div className="glass-panel p-1">
               <button
                 onClick={() => setMode('clothing')}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                  "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
                   mode === 'clothing'
-                    ? "bg-primary text-primary-foreground shadow-lg"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -170,55 +193,96 @@ export default function HomePage() {
               <button
                 onClick={() => setMode('product')}
                 disabled
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                  mode === 'product'
-                    ? "bg-primary text-primary-foreground shadow-lg"
-                    : "text-muted-foreground hover:text-foreground opacity-50 cursor-not-allowed"
-                )}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground/40 cursor-not-allowed mt-1"
               >
                 <Package className="h-4 w-4" />
                 物品场景
-                <span className="text-xs px-1.5 py-0.5 rounded bg-secondary/20 text-secondary">
-                  即将上线
-                </span>
+                <span className="text-xs px-1.5 py-0.5 rounded-md bg-muted/30">即将上线</span>
               </button>
             </div>
-          </div>
 
-          {/* 工作区 */}
-          <div className="grid gap-6 lg:grid-cols-2 max-w-6xl mx-auto">
-            {/* 左侧：上传和配置 */}
-            <div className="space-y-6">
-              {/* 上传区域 */}
-              <div className="glass-card p-6">
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-sm font-bold">1</span>
-                  上传商品图
-                </h2>
-                <UploadZone
-                  onFileSelect={handleFileSelect}
-                  onClear={handleClear}
-                  previewUrl={previewUrl}
-                />
+            {/* 1. 上传商品图 - 紧凑卡片 */}
+            <div className="glass-panel p-4 space-y-3">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
+                上传商品图
+              </h3>
+              
+              {previewUrl ? (
+                <div className="relative group">
+                  <div className="aspect-square rounded-xl overflow-hidden bg-muted/30 border border-divider">
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <button
+                    onClick={handleClear}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-sm text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] rounded-xl" />
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => document.getElementById('file-input')?.click()}
+                  className="aspect-square rounded-xl border-2 border-dashed border-divider hover:border-primary/50 bg-muted/20 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center"
+                >
+                  <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                    <Sparkles className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium mb-1">点击上传</p>
+                  <p className="text-xs text-muted-foreground">JPG, PNG, WEBP</p>
+                </div>
+              )}
+              
+              <input
+                id="file-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleFileSelect(file)
+                }}
+              />
+            </div>
+
+            {/* 2. 选择场景 */}
+            <div className="glass-panel p-4 space-y-3">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
+                选择场景
+              </h3>
+              
+              <div className="grid grid-cols-3 gap-2">
+                {SCENE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => setSelectedScene(preset.id)}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-3 rounded-lg border transition-all",
+                      selectedScene === preset.id
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-divider bg-card/30 hover:border-primary/30 hover:bg-card/50"
+                    )}
+                  >
+                    <span className="text-xl mb-1">{preset.icon}</span>
+                    <span className="text-xs font-medium text-center leading-tight">{preset.name}</span>
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* 场景选择 */}
-              <div className="glass-card p-6">
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-sm font-bold">2</span>
-                  选择场景
-                </h2>
-                <ConfigPanel
-                  selectedScene={selectedScene}
-                  onSceneChange={setSelectedScene}
-                />
-              </div>
-
-              {/* 生成按钮 */}
+            {/* 3. 生成按钮 - Sticky Bottom */}
+            <div className="sticky bottom-0 left-0 right-0 bg-sidebar/80 backdrop-blur-xl pt-4 pb-2 space-y-3">
               <Button
                 size="lg"
-                className="w-full h-14 text-lg btn-glow gap-2"
+                className="w-full h-12 text-base font-medium gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                 disabled={!selectedFile || generating}
                 onClick={handleGenerate}
               >
@@ -231,165 +295,165 @@ export default function HomePage() {
                   <>
                     <Sparkles className="h-5 w-5" />
                     一键上镜
-                    {!user && <span className="text-sm opacity-80">（需注册）</span>}
+                    {!user && <span className="text-xs opacity-80">（需注册）</span>}
                   </>
                 )}
               </Button>
 
               {/* 提示信息 */}
               {!user ? (
-                <p className="text-sm text-center text-muted-foreground">
-                  <Gift className="inline h-4 w-4 mr-1 text-secondary" />
+                <p className="text-xs text-center text-muted-foreground">
+                  <Gift className="inline h-3.5 w-3.5 mr-1 text-primary" />
                   新用户注册即送 {siteConfig.credits.initial} 积分
                 </p>
               ) : profile && (
-                <p className="text-sm text-center text-muted-foreground">
-                  当前积分：<span className="text-primary font-mono font-bold">{profile.credits}</span>
-                  <span className="mx-2">•</span>
+                <p className="text-xs text-center text-muted-foreground">
+                  当前积分：<span className="text-primary font-mono font-semibold">{profile.credits}</span>
+                  <span className="mx-1.5">•</span>
                   预览免费，下载 1 积分/张
                 </p>
               )}
             </div>
+          </div>
+        </aside>
 
-            {/* 右侧：生成结果 */}
-            <div className="glass-card p-6">
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-sm font-bold">3</span>
-                生成结果
-              </h2>
-              
-              {generatedImage ? (
-                <div className="space-y-4">
-                  <div className="relative rounded-xl overflow-hidden border border-border/50 aspect-[3/4] bg-muted">
-                    <img
-                      src={generatedImage}
-                      alt="Generated"
-                      className="w-full h-full object-cover"
-                    />
-                    {/* 水印提示 */}
-                    <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                      <p className="text-xs text-white/70 text-center">
-                        预览图 • 下载高清无水印图需消耗 1 积分
-                      </p>
+        {/* ========== 右侧画布区域 (左右结构) ========== */}
+        <div className="flex-1 flex bg-preview overflow-hidden">
+          {/* 主图区域 (左侧,占大部分空间) */}
+          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden">
+            {allImages.length > 0 ? (
+              <div className="relative flex flex-col items-center gap-6 max-w-full">
+                {/* 主图容器 - 动态大小,最大化利用空间 */}
+                <div className="relative w-full max-w-[600px] aspect-[3/4] rounded-2xl overflow-hidden bg-muted/10 border border-divider shadow-2xl">
+                  <img
+                    src={allImages[selectedImageIndex]}
+                    alt="Generated"
+                    className="w-full h-full object-cover"
+                  />
+                  {/* 水印提示 */}
+                  <div className="absolute bottom-4 inset-x-0 flex justify-center pointer-events-none">
+                    <div className="glass-panel px-4 py-2 text-sm text-muted-foreground">
+                      预览图 • 下载高清无水印图需消耗 1 积分
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button className="w-full gap-2" variant="secondary">
+                  {/* 下载按钮 */}
+                  <div className="absolute top-4 right-4">
+                    <Button size="sm" className="gap-2 glass-panel h-9 px-4 shadow-lg">
                       <Download className="h-4 w-4" />
-                      下载主图
-                    </Button>
-                    <Button 
-                      className="w-full gap-2 btn-glow" 
-                      onClick={handleGenerateMultiPose}
-                      disabled={generatingMultiPose}
-                    >
-                      {generatingMultiPose ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                      生成多视角
+                      下载
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center aspect-[3/4]">
-                  <div className="w-20 h-20 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                    <Sparkles className="h-10 w-10 text-muted-foreground/30" />
-                  </div>
-                  <p className="text-muted-foreground mb-2">生成的图片将显示在这里</p>
-                  <p className="text-sm text-muted-foreground/70">
-                    上传图片 → 选择场景 → 点击生成
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
 
-          {/* 多视角图结果区域 */}
-          { (generatingMultiPose || multiPoseImages.length > 0) && (
-            <div id="multi-pose-results" className="mt-12 space-y-6 max-w-6xl mx-auto">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold flex items-center gap-3">
-                  <Sparkles className="h-6 w-6 text-primary" />
-                  多视角姿态展示
-                </h2>
-                {multiPoseImages.length > 0 && (
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Download className="h-4 w-4" />
-                    打包下载全部
+                  {/* 图片索引指示 */}
+                  {allImages.length > 1 && (
+                    <div className="absolute top-4 left-4 glass-panel px-3 py-1.5 text-sm font-medium">
+                      {selectedImageIndex + 1} / {allImages.length}
+                    </div>
+                  )}
+                </div>
+
+                {/* 多视角生成按钮 */}
+                {generatedImage && selectedImageIndex === 0 && !generatingMultiPose && multiPoseImages.length === 0 && (
+                  <Button
+                    size="lg"
+                    className="gap-2 h-12 px-8 bg-gradient-to-r from-primary to-secondary text-white font-medium shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
+                    onClick={handleGenerateMultiPose}
+                  >
+                    <Sparkles className="h-5 w-5" />
+                    生成多视角套图
                   </Button>
                 )}
               </div>
+            ) : (
+              <div className="text-center">
+                <div className="w-24 h-24 rounded-2xl bg-muted/20 border border-divider flex items-center justify-center mb-4 mx-auto">
+                  <Sparkles className="h-12 w-12 text-muted-foreground/20" />
+                </div>
+                <p className="text-muted-foreground mb-2 text-base font-medium">生成的图片将显示在这里</p>
+                <p className="text-sm text-muted-foreground/60">
+                  上传图片 → 选择场景 → 点击生成
+                </p>
+              </div>
+            )}
+          </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {/* 缩略图列表 (右侧,垂直排列) */}
+          {allImages.length > 1 && (
+            <div className="w-[200px] border-l border-divider bg-sidebar/30 p-4 overflow-y-auto scrollbar-thin">
+              <div className="flex flex-col gap-3">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-1 px-1">
+                  套图 ({allImages.length})
+                </h3>
+                
                 {generatingMultiPose && multiPoseImages.length === 0 ? (
-                  // 加载状态占位符
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="glass-card aspect-[3/4] flex flex-col items-center justify-center animate-pulse bg-muted/50">
-                      <Loader2 className="h-8 w-8 text-primary/40 animate-spin mb-2" />
-                      <p className="text-xs text-muted-foreground">正在生成视角 {i + 1}...</p>
-                    </div>
-                  ))
+                  // 加载占位符
+                  <>
+                    {allImages.map((img, i) => (
+                      <button
+                        key={`existing-${i}`}
+                        onClick={() => setSelectedImageIndex(i)}
+                        className={cn(
+                          "relative w-full aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all",
+                          selectedImageIndex === i
+                            ? "border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20"
+                            : "border-divider hover:border-primary/60 opacity-75 hover:opacity-100"
+                        )}
+                      >
+                        <img
+                          src={img}
+                          alt={`缩略图 ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {selectedImageIndex === i && (
+                          <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-primary shadow-lg" />
+                        )}
+                      </button>
+                    ))}
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div
+                        key={`loading-${i}`}
+                        className="w-full aspect-[3/4] rounded-xl bg-muted/30 border-2 border-dashed border-divider flex flex-col items-center justify-center animate-pulse"
+                      >
+                        <Loader2 className="h-6 w-6 text-primary/40 animate-spin mb-1" />
+                        <p className="text-xs text-muted-foreground">视角 {i + 2}</p>
+                      </div>
+                    ))}
+                  </>
                 ) : (
-                  multiPoseImages.map((img, i) => (
-                    <div key={i} className="group relative glass-card overflow-hidden aspect-[3/4] border-border/50 hover:border-primary/50 transition-all">
+                  // 所有缩略图
+                  allImages.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedImageIndex(i)}
+                      className={cn(
+                        "relative w-full aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all duration-200",
+                        selectedImageIndex === i
+                          ? "border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20"
+                          : "border-divider hover:border-primary/60 opacity-75 hover:opacity-100"
+                      )}
+                    >
                       <img
                         src={img}
-                        alt={`Pose ${i + 1}`}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        alt={`缩略图 ${i + 1}`}
+                        className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button size="icon" variant="secondary" className="rounded-full">
-                          <Download className="h-4 w-4" />
-                        </Button>
+                      {/* 选中指示器 */}
+                      {selectedImageIndex === i && (
+                        <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-primary shadow-lg" />
+                      )}
+                      {/* 序号标签 */}
+                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-white text-xs font-medium">
+                        {i === 0 ? '主图' : `视角${i}`}
                       </div>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
             </div>
           )}
-        </section>
-
-        {/* 特性介绍 */}
-        <section className="container py-16 border-t border-border/40">
-          <div className="grid gap-8 md:grid-cols-3 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4">
-                <Zap className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold mb-2">秒级生成</h3>
-              <p className="text-sm text-muted-foreground">
-                AI 驱动，30 秒内完成专业级商拍效果
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-secondary/10 text-secondary mb-4">
-                <Sparkles className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold mb-2">高度还原</h3>
-              <p className="text-sm text-muted-foreground">
-                精准保留服装细节、颜色和款式特征
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary mb-4">
-                <ArrowRight className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold mb-2">简单易用</h3>
-              <p className="text-sm text-muted-foreground">
-                无需专业技能，上传即可生成营销大片
-              </p>
-            </div>
-          </div>
-        </section>
+        </div>
       </main>
-
-      <Footer />
 
       {/* 认证弹窗 */}
       <AuthDialog 

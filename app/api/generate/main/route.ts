@@ -8,28 +8,11 @@ import { generateClothingImage, generateProductImage } from '@/lib/ai/gemini-cli
 import { SCENE_PRESETS } from '@/config/presets'
 import { createGeneration, updateGenerationStatus } from '@/lib/db/generations'
 import { getUserProfile, createUserProfile } from '@/lib/db/profiles'
+import { MODEL_CONFIG } from '@/config/models'
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = createClient()
-
-    // 验证用户
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ success: false, error: '未登录' }, { status: 401 })
-    }
-
-    // 确保 Profile 存在
-    let profile = await getUserProfile(user.id)
-    if (!profile) {
-      profile = await createUserProfile(user.id)
-      if (!profile) {
-        return NextResponse.json(
-          { success: false, error: '创建用户资料失败' },
-          { status: 500 }
-        )
-      }
-    }
 
     // 解析请求
     const { originalImageUrl, sceneType, mode = 'clothing' } = await request.json()
@@ -40,6 +23,24 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Mock 模式直接调用 AI 并返回结果（跳过用户和数据库逻辑）
+    if (MODEL_CONFIG.mockMode) {
+      const scene = SCENE_PRESETS.find(s => s.id === sceneType)
+      const sceneName = scene?.name || '极简白底'
+      
+      const result = mode === 'product'
+        ? await generateProductImage(originalImageUrl, sceneName)
+        : await generateClothingImage(originalImageUrl, sceneName)
+
+      return NextResponse.json({
+        success: true,
+        imageUrl: result.imageUrl,
+      })
+    }
+
+    // 验证用户
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     // 获取场景名称
     const scene = SCENE_PRESETS.find(s => s.id === sceneType)

@@ -3,13 +3,55 @@
 @tailwind utilities;
 
 /* ========================================
-   ProShot 设计系统 - 基于 ui-ux-pro-max-skill
-   采用深色 Glassmorphism 风格
+   ProShot 设计系统 - Apple 液态玻璃风格
+   轻盈、时尚、精致
    ======================================== */
 
 @layer base {
-  :root {
-    /* 深色主题 - 默认 */
+  :root, .light {
+    /* 基础背景 - 纯净白 */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    
+    /* 主色 - 优雅蓝紫 */
+    --primary: 250 80% 60%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* 次要色 - 清新青色 */
+    --secondary: 195 85% 50%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 250 80% 60%;
+    
+    --divider: 240 5.9% 90%;
+    
+    /* 区域背景优化 */
+    --app-bg: 0 0% 98%;
+    --sidebar-bg: 0 0% 100%;
+    --preview-bg: 240 5% 96%;
+    --filmstrip-bg: 0 0% 100%;
+    
+    --radius: 0.875rem;
+  }
+
+  .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     
@@ -19,11 +61,9 @@
     --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
     
-    /* 主色 - Electric Violet */
     --primary: 263 70% 58%;
     --primary-foreground: 0 0% 100%;
     
-    /* 次要色 - Cyan */
     --secondary: 187 85% 43%;
     --secondary-foreground: 0 0% 100%;
     
@@ -40,33 +80,12 @@
     --input: 240 10% 15%;
     --ring: 263 70% 58%;
     
-    --radius: 0.75rem;
+    --divider: 240 10% 15%;
     
-    /* 渐变变量 */
-    --gradient-primary: linear-gradient(135deg, hsl(263, 70%, 58%) 0%, hsl(187, 85%, 43%) 100%);
-    --gradient-glow: radial-gradient(ellipse at 50% 0%, hsla(263, 70%, 58%, 0.15) 0%, transparent 70%);
-  }
-
-  .light {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 263 70% 58%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 187 85% 43%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 263 50% 95%;
-    --accent-foreground: 263 70% 58%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5% 90%;
-    --input: 240 5% 90%;
-    --ring: 263 70% 58%;
+    --app-bg: 240 10% 3.9%;
+    --sidebar-bg: 240 10% 6%;
+    --preview-bg: 240 10% 3%;
+    --filmstrip-bg: 240 10% 5%;
   }
 }
 
@@ -86,81 +105,119 @@
   
   /* 选中文字颜色 */
   ::selection {
-    @apply bg-primary/30 text-foreground;
+    @apply bg-primary/20 text-foreground;
   }
 }
 
 @layer components {
-  /* 毛玻璃卡片 */
-  .glass-card {
-    @apply bg-card/50 backdrop-blur-xl border border-white/10 rounded-xl;
+  /* Apple 液态玻璃面板 */
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-2xl border border-white/40 rounded-2xl;
     box-shadow: 
-      0 0 0 1px hsla(0, 0%, 100%, 0.05) inset,
-      0 4px 24px -4px hsla(0, 0%, 0%, 0.4);
+      0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+      0 4px 16px -1px rgba(0, 0, 0, 0.05),
+      0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  }
+  
+  .dark .glass-panel {
+    @apply bg-white/10 backdrop-blur-xl border-white/10;
+    box-shadow: 
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 4px 24px -4px rgba(0, 0, 0, 0.4);
+  }
+  
+  /* 毛玻璃卡片（兼容旧版） */
+  .glass-card {
+    @apply glass-panel;
   }
   
   /* 发光按钮 */
   .btn-glow {
     @apply relative overflow-hidden;
-    box-shadow: 0 0 20px hsla(263, 70%, 58%, 0.3);
+    box-shadow: 0 4px 12px hsla(250, 80%, 60%, 0.25);
   }
   
   .btn-glow:hover {
-    box-shadow: 0 0 30px hsla(263, 70%, 58%, 0.5);
+    box-shadow: 0 6px 16px hsla(250, 80%, 60%, 0.35);
   }
   
   /* 渐变文字 */
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-primary);
+    background-image: linear-gradient(135deg, hsl(250, 80%, 60%) 0%, hsl(195, 85%, 50%) 100%);
   }
   
   /* 渐变边框 */
   .border-gradient {
     @apply relative;
     background: linear-gradient(var(--background), var(--background)) padding-box,
-                var(--gradient-primary) border-box;
+                linear-gradient(135deg, hsl(250, 80%, 60%), hsl(195, 85%, 50%)) border-box;
     border: 1px solid transparent;
   }
   
   /* 上传区域样式 */
   .upload-zone {
-    @apply relative rounded-xl border-2 border-dashed border-border/50;
-    @apply bg-card/30 backdrop-blur-sm;
+    @apply relative rounded-2xl border-2 border-dashed border-divider;
+    @apply bg-muted/30 backdrop-blur-sm;
     @apply transition-all duration-300;
   }
   
   .upload-zone:hover {
-    @apply border-primary/50 bg-primary/5;
+    @apply border-primary/40 bg-primary/5;
   }
   
   .upload-zone.dragging {
     @apply border-primary bg-primary/10;
-    box-shadow: 0 0 40px hsla(263, 70%, 58%, 0.2);
+    box-shadow: 0 0 24px hsla(250, 80%, 60%, 0.15);
   }
   
-  /* 选项卡样式 */
-  .tab-item {
-    @apply relative px-4 py-2 rounded-lg;
-    @apply text-muted-foreground transition-all duration-200;
+  /* 特殊背景 */
+  .bg-app {
+    background-color: hsl(var(--app-bg));
   }
   
-  .tab-item:hover {
-    @apply text-foreground bg-muted/50;
+  .bg-sidebar {
+    background-color: hsl(var(--sidebar-bg));
   }
   
-  .tab-item.active {
-    @apply text-primary bg-primary/10;
+  .bg-preview {
+    background-color: hsl(var(--preview-bg));
   }
   
-  .tab-item.active::after {
-    content: '';
-    @apply absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5;
-    @apply bg-primary rounded-full;
+  .bg-filmstrip {
+    background-color: hsl(var(--filmstrip-bg));
+  }
+  
+  .border-divider {
+    border-color: hsl(var(--divider));
   }
 }
 
 @layer utilities {
+  /* 自定义滚动条 - 精致风格 */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 100px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+  
   /* 动画 */
   .animate-float {
     animation: float 6s ease-in-out infinite;
@@ -188,14 +245,14 @@
   /* 背景网格 */
   .bg-grid {
     background-image: 
-      linear-gradient(hsla(0, 0%, 100%, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, hsla(0, 0%, 100%, 0.03) 1px, transparent 1px);
+      linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px);
     background-size: 64px 64px;
   }
   
   /* 背景光晕 */
   .bg-glow {
-    background-image: var(--gradient-glow);
+    background-image: radial-gradient(ellipse at 50% 0%, hsla(250, 80%, 60%, 0.08) 0%, transparent 70%);
   }
   
   /* 隐藏滚动条 */

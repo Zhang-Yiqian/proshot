@@ -18,8 +18,8 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b border-divider bg-background/95 backdrop-blur-xl">
+      <div className="flex h-14 items-center justify-between px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary">
@@ -31,7 +31,7 @@ export function Header() {
         </Link>
 
         {/* 导航 */}
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-2">
           {user ? (
             <>
               <Link href="/gallery">
