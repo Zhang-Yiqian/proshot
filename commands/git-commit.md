@@ -28,7 +28,7 @@ description: 智能分析代码变更并生成符合 Conventional Commits 规范
 - 如果我特殊制定了变更描述，请优先按照我的描述来提交
 
 # Output
-请直接提供一个可以在终端运行的代码块，格式如下：
+请直接提供唯一一个可以在终端运行的代码块，格式如下：
 
 ```bash
-git add . && git commit -m "<你的提交信息>"
+git add . && git commit -m "..." && git push
