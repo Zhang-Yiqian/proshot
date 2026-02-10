@@ -6,6 +6,7 @@ export const AI_MODELS = {
   MAIN_IMAGE: "google/gemini-3-pro-image-preview",
   MULTI_POSE: "google/gemini-2.0-pro-exp-02-05:free", // 使用 Gemini 2.0 Pro 生成多视角
   EXPAND_IMAGE: "google/gemini-2.5-flash-image",
+  DIFY_IMAGE: "google/gemini-2.5-pro", // Dify 工作流使用 Gemini 2.5 Pro
 } as const
 
 export const MODEL_CONFIG = {

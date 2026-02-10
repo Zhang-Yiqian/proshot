@@ -96,13 +96,13 @@ export default function HomePage() {
       }
 
       console.log('[Workbench] 正在请求生成 API...')
-      const response = await fetch('/api/generate/main', {
+      // 使用 Dify 工作流 API
+      const response = await fetch('/api/generate/dify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalImageUrl: publicUrl,
           sceneType: selectedScene,
-          mode,
         }),
       })
 
