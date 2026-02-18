@@ -32,17 +32,6 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
     mockMode: MODEL_CONFIG.mockMode
   })
 
-  // Mock 模式处理
-  if (MODEL_CONFIG.mockMode) {
-    console.log('[AI Client] Mock 模式已开启，返回固定图片')
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    return {
-      success: true,
-      imageUrl: MODEL_CONFIG.mockImageUrl
-    }
-  }
-
   if (!MODEL_CONFIG.apiKey) {
     console.error('[AI Client] OpenRouter API Key 未配置')
     return { success: false, error: 'OpenRouter API Key 未配置' }
@@ -170,6 +159,14 @@ export async function generateClothingImage(
   console.log('[AI Client] === 开始生成服装上身图 ===')
   console.log('[AI Client] 场景ID:', sceneId)
   console.log('[AI Client] 参考图URL:', referenceImageUrl)
+
+  // 主图 Mock 模式：直接返回固定图片，跳过模型调用
+  // 套图节点（generateMultiPoseImages）不经过此函数，不受影响
+  if (MODEL_CONFIG.mockMainImageMode) {
+    console.log('[AI Client] 主图 Mock 模式已开启，跳过模型调用，返回固定图片')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    return { success: true, imageUrl: MODEL_CONFIG.mockImageUrl }
+  }
   
   // 使用 prompt-builder 构建完整的 prompt
   const { buildClothingPrompt } = await import('./prompt-builder')
@@ -193,6 +190,13 @@ export async function generateProductImage(
   referenceImageUrl: string,
   sceneId: string
 ): Promise<GenerateResult> {
+  // 主图 Mock 模式：直接返回固定图片，跳过模型调用
+  if (MODEL_CONFIG.mockMainImageMode) {
+    console.log('[AI Client] 主图 Mock 模式已开启，跳过物品场景图模型调用，返回固定图片')
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    return { success: true, imageUrl: MODEL_CONFIG.mockImageUrl }
+  }
+
   // 使用 prompt-builder 构建完整的 prompt
   const { buildProductPrompt } = await import('./prompt-builder')
   const prompt = buildProductPrompt(sceneId)
@@ -205,38 +209,72 @@ export async function generateProductImage(
 }
 
 /**
- * 生成模特多视角/多姿势图
+ * 生成模特多姿势拍摄图（3张，基于主图人物特征和场景）
+ * 注意：严格保持与主图相同的拍摄角度，不生成主图中未出现的角度
  */
 export async function generateMultiPoseImages(
   mainImageUrl: string
 ): Promise<GenerateResult> {
-  // TODO: 后续由用户自行维护具体的 Prompt 逻辑
-  const prompt = `基于这张主图，生成5张模特在相同场景下的不同姿态视角图。要求：
-1. 模特保持长相、身材、发型完全一致；
-2. 服装款式、颜色、纹理细节与主图完全一致；
-3. 场景光影和背景保持一致；
-4. 5个姿态分别是：正面、侧面30度、侧面90度、背面、以及一个自然走动的姿态；
-5. 请直接输出5张图片。`
+  // 套图节点始终调用真实模型，不受任何 mock 配置影响
 
-  // 如果是 Mock 模式
-  if (MODEL_CONFIG.mockMode) {
-    await new Promise(resolve => setTimeout(resolve, 3000))
+  // 3 种不同姿势的提示词（严格保持主图拍摄角度）
+  const posePrompts = [
+    `Based on the reference image provided, generate a professional fashion e-commerce photo. Requirements:
+1. Preserve exactly the model's face, skin tone, hairstyle, and hair color from the reference image.
+2. Keep the clothing style, color, texture, and pattern identical to the reference image.
+3. Maintain the same scene, background, lighting, and atmosphere as the reference image.
+4. [CRITICAL] The camera angle and shooting perspective MUST be identical to the reference image. Do NOT introduce any new angles or viewpoints not present in the original.
+5. Pose variation: Model stands in a natural relaxed pose, hands resting softly at sides or lightly on hips, with a confident and natural expression.
+6. Output 1 high-quality commercial studio-style photo.`,
+
+    `Based on the reference image provided, generate a professional fashion e-commerce photo. Requirements:
+1. Preserve exactly the model's face, skin tone, hairstyle, and hair color from the reference image.
+2. Keep the clothing style, color, texture, and pattern identical to the reference image.
+3. Maintain the same scene, background, lighting, and atmosphere as the reference image.
+4. [CRITICAL] The camera angle and shooting perspective MUST be identical to the reference image. Do NOT introduce any new angles or viewpoints not present in the original.
+5. Pose variation: Model is in an elegant walking dynamic pose, light steps, slight body rotation, showcasing the garment's movement and flow.
+6. Output 1 high-quality commercial studio-style photo.`,
+
+    `Based on the reference image provided, generate a professional fashion e-commerce photo. Requirements:
+1. Preserve exactly the model's face, skin tone, hairstyle, and hair color from the reference image.
+2. Keep the clothing style, color, texture, and pattern identical to the reference image.
+3. Maintain the same scene, background, lighting, and atmosphere as the reference image.
+4. [CRITICAL] The camera angle and shooting perspective MUST be identical to the reference image. Do NOT introduce any new angles or viewpoints not present in the original.
+5. Pose variation: Model in a confident editorial pose, one hand on hip or lightly touching collar, weight shifted to one side, highlighting the garment's silhouette.
+6. Output 1 high-quality commercial studio-style photo.`,
+  ]
+
+  console.log('[AI Client] 开始并行生成 3 张多姿势图...')
+
+  // 并行发起 3 次请求
+  const results = await Promise.all(
+    posePrompts.map((prompt, index) => {
+      console.log(`[AI Client] 发起第 ${index + 1} 张姿势图请求...`)
+      return generateImage({
+        prompt,
+        imageUrl: mainImageUrl,
+        model: AI_MODELS.MULTI_POSE,
+      })
+    })
+  )
+
+  const successfulUrls = results
+    .filter(r => r.success && r.imageUrl)
+    .map(r => r.imageUrl as string)
+
+  console.log(`[AI Client] 多姿势图生成完成，成功 ${successfulUrls.length}/3 张`)
+
+  if (successfulUrls.length === 0) {
+    const firstError = results.find(r => !r.success)?.error
     return {
-      success: true,
-      imageUrl: MODEL_CONFIG.mockImageUrl,
-      imageUrls: [
-        MODEL_CONFIG.mockImageUrl,
-        MODEL_CONFIG.mockImageUrl,
-        MODEL_CONFIG.mockImageUrl,
-        MODEL_CONFIG.mockImageUrl,
-        MODEL_CONFIG.mockImageUrl,
-      ]
+      success: false,
+      error: firstError || '多姿势图生成失败',
     }
   }
 
-  return generateImage({
-    prompt,
-    imageUrl: mainImageUrl,
-    model: AI_MODELS.MULTI_POSE,
-  })
+  return {
+    success: true,
+    imageUrl: successfulUrls[0],
+    imageUrls: successfulUrls,
+  }
 }

@@ -32,6 +32,10 @@ export default function HomePage() {
   const [generatingMultiPose, setGeneratingMultiPose] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0) // 当前选中的图片索引
 
+  // 调试模式：生成 3 张；正式上线改为 5
+  const MULTI_POSE_SLOTS = 5
+  const MULTI_POSE_GENERATE_COUNT = 3
+
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
     setPreviewUrl(URL.createObjectURL(file))
@@ -52,8 +56,8 @@ export default function HomePage() {
   }
 
   const handleGenerate = async () => {
-    // 未登录时弹出注册框
-    if (!user && !MODEL_CONFIG.mockMode) {
+    // 未登录时弹出注册框（主图 mock 模式下跳过鉴权，无需登录）
+    if (!user && !MODEL_CONFIG.mockMode && !MODEL_CONFIG.mockMainImageMode) {
       setShowAuthDialog(true)
       return
     }
@@ -65,13 +69,13 @@ export default function HomePage() {
     setMultiPoseImages([])
     setSelectedImageIndex(0)
     
-    console.log('[Workbench] 开始生成...', { mode, selectedScene, mockMode: MODEL_CONFIG.mockMode })
+    console.log('[Workbench] 开始生成...', { mode, selectedScene, mockMode: MODEL_CONFIG.mockMode, mockMainImageMode: MODEL_CONFIG.mockMainImageMode })
     
     try {
       let publicUrl = ''
 
-      if (MODEL_CONFIG.mockMode) {
-        console.log('[Workbench] Mock 模式：使用虚拟 URL')
+      if (MODEL_CONFIG.mockMode || MODEL_CONFIG.mockMainImageMode) {
+        console.log('[Workbench] Mock 模式：跳过上传，使用虚拟 URL')
         publicUrl = 'https://mock-url.com/original.jpg'
       } else {
         console.log('[Workbench] 正常模式：正在上传图片到 Supabase...')
@@ -393,16 +397,22 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* 多视角生成按钮 */}
-                {generatedImage && selectedImageIndex === 0 && !generatingMultiPose && multiPoseImages.length === 0 && (
+                {/* 多姿势生成按钮 */}
+                {generatedImage && !generatingMultiPose && multiPoseImages.length === 0 && (
                   <Button
                     size="lg"
                     className="gap-2 h-12 px-8 bg-gradient-to-r from-primary to-secondary text-white font-medium shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
                     onClick={handleGenerateMultiPose}
                   >
                     <Sparkles className="h-5 w-5" />
-                    生成多视角套图
+                    生成多姿势套图
                   </Button>
+                )}
+                {generatingMultiPose && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    正在生成 {MULTI_POSE_GENERATE_COUNT} 张多姿势图，请稍候...
+                  </div>
                 )}
               </div>
             ) : (
@@ -419,15 +429,15 @@ export default function HomePage() {
           </div>
 
           {/* 缩略图列表 (右侧,垂直排列) */}
-          {allImages.length > 1 && (
+          {(allImages.length > 1 || generatingMultiPose) && (
             <div className="w-[200px] border-l border-divider bg-sidebar/30 p-4 overflow-y-auto scrollbar-thin">
               <div className="flex flex-col gap-3">
                 <h3 className="text-sm font-semibold text-muted-foreground mb-1 px-1">
-                  套图 ({allImages.length})
+                  套图 ({generatingMultiPose ? `生成中...` : `${allImages.length}/${1 + MULTI_POSE_SLOTS}`})
                 </h3>
                 
                 {generatingMultiPose && multiPoseImages.length === 0 ? (
-                  // 加载占位符
+                  // 加载占位符：主图 + 5 个多姿势占位
                   <>
                     {allImages.map((img, i) => (
                       <button
@@ -450,44 +460,58 @@ export default function HomePage() {
                         )}
                       </button>
                     ))}
-                    {Array.from({ length: 5 }).map((_, i) => (
+                    {Array.from({ length: MULTI_POSE_SLOTS }).map((_, i) => (
                       <div
                         key={`loading-${i}`}
                         className="w-full aspect-[3/4] rounded-xl bg-muted/30 border-2 border-dashed border-divider flex flex-col items-center justify-center animate-pulse"
                       >
                         <Loader2 className="h-6 w-6 text-primary/40 animate-spin mb-1" />
-                        <p className="text-xs text-muted-foreground">视角 {i + 2}</p>
+                        <p className="text-xs text-muted-foreground">姿势 {i + 1}</p>
                       </div>
                     ))}
                   </>
                 ) : (
-                  // 所有缩略图
-                  allImages.map((img, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedImageIndex(i)}
-                      className={cn(
-                        "relative w-full aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all duration-200",
-                        selectedImageIndex === i
-                          ? "border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20"
-                          : "border-divider hover:border-primary/60 opacity-75 hover:opacity-100"
-                      )}
-                    >
-                      <img
-                        src={img}
-                        alt={`缩略图 ${i + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                      {/* 选中指示器 */}
-                      {selectedImageIndex === i && (
-                        <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-primary shadow-lg" />
-                      )}
-                      {/* 序号标签 */}
-                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-white text-xs font-medium">
-                        {i === 0 ? '主图' : `视角${i}`}
-                      </div>
-                    </button>
-                  ))
+                  // 所有缩略图：已生成的图片 + 剩余空位
+                  <>
+                    {allImages.map((img, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedImageIndex(i)}
+                        className={cn(
+                          "relative w-full aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all duration-200",
+                          selectedImageIndex === i
+                            ? "border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20"
+                            : "border-divider hover:border-primary/60 opacity-75 hover:opacity-100"
+                        )}
+                      >
+                        <img
+                          src={img}
+                          alt={`缩略图 ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {selectedImageIndex === i && (
+                          <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-primary shadow-lg" />
+                        )}
+                        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-white text-xs font-medium">
+                          {i === 0 ? '主图' : `姿势${i}`}
+                        </div>
+                      </button>
+                    ))}
+                    {/* 空位：未生成的多姿势槽位 */}
+                    {multiPoseImages.length > 0 &&
+                      Array.from({ length: MULTI_POSE_SLOTS - multiPoseImages.length }).map((_, i) => (
+                        <div
+                          key={`empty-${i}`}
+                          className="w-full aspect-[3/4] rounded-xl bg-muted/10 border-2 border-dashed border-divider/40 flex flex-col items-center justify-center"
+                        >
+                          <div className="w-7 h-7 rounded-full bg-muted/30 flex items-center justify-center mb-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-muted-foreground/30" />
+                          </div>
+                          <p className="text-xs text-muted-foreground/40">即将上线</p>
+                        </div>
+                      ))
+                    }
+                  </>
                 )}
               </div>
             </div>

@@ -29,17 +29,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[API] Mock 模式状态:', MODEL_CONFIG.mockMode)
+    console.log('[API] 主图 Mock 模式状态:', MODEL_CONFIG.mockMainImageMode)
 
-    // Mock 模式直接调用 AI 并返回结果（跳过用户和数据库逻辑）
-    if (MODEL_CONFIG.mockMode) {
-      console.log('[API] 使用 Mock 模式，直接调用 AI 生成')
-      // Mock 模式：直接使用场景ID调用生成函数
+    // 主图 Mock 模式：跳过用户鉴权和数据库操作，直接调用生成函数
+    // 生成函数内部会判断 mockMainImageMode，决定是否跳过模型调用
+    if (MODEL_CONFIG.mockMainImageMode) {
+      console.log('[API] 主图使用 Mock 模式，跳过鉴权，直接调用生成函数')
       const result = mode === 'product'
         ? await generateProductImage(originalImageUrl, sceneType)
         : await generateClothingImage(originalImageUrl, sceneType)
 
-      console.log('[API] AI 生成结果:', result)
+      console.log('[API] 主图 Mock 生成结果:', result)
       return NextResponse.json({
         success: true,
         imageUrl: result.imageUrl,
