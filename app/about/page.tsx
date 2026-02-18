@@ -59,7 +59,7 @@ export default function AboutPage() {
                 用户至上
               </h2>
               <p className="text-muted-foreground leading-relaxed">
-                我们深知电商卖家的痛点：传统商拍成本高、周期长、效果不可控。ProShot 提供"先体验，后付费"的模式，让您在看到效果后再做决定。
+                我们深知电商卖家的痛点：传统商拍成本高、周期长、效果不可控。ProShot 提供&ldquo;先体验，后付费&rdquo;的模式，让您在看到效果后再做决定。
               </p>
             </div>
 

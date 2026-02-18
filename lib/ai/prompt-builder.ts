@@ -8,7 +8,7 @@ import { SCENE_PRESETS, PRODUCT_SCENE_PRESETS } from '@/config/presets'
  * 构建服装上身 Prompt
  */
 export function buildClothingPrompt(sceneId: string): string {
-  const scene = SCENE_PRESETS.find(s => s.id === sceneId)
+  const scene = SCENE_PRESETS.find(s => s.id === sceneId) as typeof SCENE_PRESETS[number] | undefined
   
   if (!scene) {
     // 默认场景
@@ -22,7 +22,7 @@ export function buildClothingPrompt(sceneId: string): string {
 5. 高清摄影质感，商业大片水准`
   }
   
-  const promptDetail = 'promptDetail' in scene ? scene.promptDetail : scene.name
+  const promptDetail = scene.promptDetail
   
   return `你是一个专业的时尚摄影大师。请将上传的白底服装图中的衣服穿在一个亚洲模特身上。
 
