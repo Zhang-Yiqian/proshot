@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["sin1", "hnd1"],
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_role_key",
+    "OPENROUTER_API_KEY": "@openrouter_api_key",
+    "OPENROUTER_API_BASE_URL": "@openrouter_api_base_url",
+    "NEXT_PUBLIC_SITE_URL": "@site_url",
+    "NEXT_PUBLIC_MOCK_MODE": "@mock_mode",
+    "NEXT_PUBLIC_MOCK_MAIN_IMAGE": "@mock_main_image"
+  }
+}
