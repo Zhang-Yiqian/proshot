@@ -3,10 +3,9 @@
  */
 
 export const AI_MODELS = {
-  MAIN_IMAGE: "google/gemini-3-pro-image-preview",
+  MAIN_IMAGE: "google/gemini-2.5-flash-image", // 主图生成使用 Gemini 2.5 Flash Image Preview (Nano Banana)
   MULTI_POSE: "google/gemini-2.0-pro-exp-02-05:free", // 使用 Gemini 2.0 Pro 生成多视角
-  EXPAND_IMAGE: "google/gemini-2.5-flash-image",
-  DIFY_IMAGE: "google/gemini-2.5-pro", // Dify 工作流使用 Gemini 2.5 Pro
+  EXPAND_IMAGE: "google/gemini-2.5-flash-image-preview",
 } as const
 
 export const MODEL_CONFIG = {

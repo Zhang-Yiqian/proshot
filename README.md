@@ -12,7 +12,6 @@ ProShot（上镜）是一款面向电商卖家的AI驱动商拍工具，专为�
 ## ✨ 核心功能
 
 - 🎨 **智能生成**：基于Gemini AI模型，30秒内生成高质量营销图
-- 🔗 **Dify 工作流**：支持通过Dify平台编排AI工作流，灵活配置生成逻辑
 - 👔 **多种预设**：支持多种模特类型（亚洲/欧美，男/女）和场景（街拍/居家/咖啡馆等）
 - 💎 **高还原度**：精准保留商品Logo、版型、细节
 - 💰 **积分系统**：预览免费，下载仅需1积分
@@ -33,12 +32,10 @@ ProShot（上镜）是一款面向电商卖家的AI驱动商拍工具，专为�
   - PostgreSQL数据库
   - Auth认证系统
   - Storage文件存储
-- **Dify 工作流** - AI 工作流编排（主推）
-  - Gemini 2.5 Pro (服饰上身生成)
-  - 可视化配置提示词和流程
-- **OpenRouter** - AI模型调用（备选方案）
-  - gemini-3-pro-image (主图生成)
-  - gemini-2-flash-image (套图扩展)
+- **OpenRouter** - AI模型调用
+  - Google Gemini 2.5 Flash Image (主图生成)
+  - 支持多模态输入(图片+文本)
+  - 3:4宽高比，2K分辨率输出
 
 ## 📁 项目结构
 
@@ -91,12 +88,7 @@ npm install
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# Dify 工作流配置（推荐）
-DIFY_API_KEY=app-your-dify-api-key
-DIFY_API_BASE_URL=https://api.dify.ai/v1
-DIFY_WORKFLOW_ID=your-workflow-id
-
-# OpenRouter 配置（可选）
+# OpenRouter 配置
 OPENROUTER_API_KEY=sk-or-v1-your-api-key
 OPENROUTER_API_BASE_URL=https://openrouter.ai/api/v1
 
@@ -106,10 +98,6 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 # 开发模式（可选）
 NEXT_PUBLIC_MOCK_MODE=true
 ```
-
-详细配置说明请参考：
-- **Dify 工作流**: 查看 [DIFY_WORKFLOW_CONFIG.md](./DIFY_WORKFLOW_CONFIG.md)
-- **完整配置文档**: 查看 [DIFY_SETUP.md](./DIFY_SETUP.md)
 
 ### 3. 初始化Supabase数据库
 
@@ -152,9 +140,8 @@ npm run dev
 ## 🔑 核心文件说明
 
 ### AI接口层
-- `lib/ai/dify-client.ts` - Dify工作流客户端（主推）
-- `lib/ai/gemini-client.ts` - Gemini API封装（OpenRouter）
-- `lib/ai/prompt-builder.ts` - Prompt构建器
+- `lib/ai/gemini-client.ts` - OpenRouter API 客户端（Google Gemini 2.5 Flash Image）
+- `lib/ai/prompt-builder.ts` - Prompt 构建器
 
 ### 数据库操作
 - `lib/db/profiles.ts` - 用户Profile CRUD

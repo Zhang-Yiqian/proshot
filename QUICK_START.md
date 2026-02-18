@@ -34,11 +34,11 @@ npm install
 - Anon Key
 - Service Role Key
 
-### 2. 配置 Gemini API（通过 One API）
+### 2. 配置 OpenRouter API
 
-准备您的 One API 配置：
-- API Key
-- Base URL（例如：https://your-one-api.com/v1）
+访问 [OpenRouter](https://openrouter.ai/keys) 并获取：
+- API Key（格式：sk-or-v1-xxxxx）
+- Base URL：https://openrouter.ai/api/v1
 
 ### 3. 创建 `.env.local` 文件
 
@@ -50,12 +50,15 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
-# Gemini AI配置（One API）
-GEMINI_API_KEY=sk-xxxxxxxxxxxxxx
-GEMINI_API_BASE_URL=https://your-one-api-endpoint.com/v1
+# OpenRouter 配置
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxx
+OPENROUTER_API_BASE_URL=https://openrouter.ai/api/v1
 
 # 网站配置
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# 开发调试(可选)
+NEXT_PUBLIC_MOCK_MODE=true
 ```
 
 ---
@@ -162,23 +165,34 @@ npm run lint
 
 ## ⚠️ 注意事项
 
-### Gemini API 调用
+### OpenRouter API 调用
 
-当前 `lib/ai/gemini-client.ts` 已经按照 **OpenAI 兼容格式** 封装，适配 One API：
+当前 `lib/ai/gemini-client.ts` 通过 OpenRouter 调用 Google Gemini 2.5 Flash Image：
 
 ```typescript
 // 请求格式
-POST /v1/images/generations
+POST /api/v1/chat/completions
 {
-  "model": "gemini-3-pro-image",
-  "prompt": "...",
-  "image_url": "...",  // 参考图
-  "n": 1,
-  "size": "1024x1024"
+  "model": "google/gemini-2.5-flash-image",
+  "messages": [{ 
+    "role": "user", 
+    "content": [
+      { "type": "image_url", "image_url": { "url": "..." } },
+      { "type": "text", "text": "..." }
+    ]
+  }],
+  "modalities": ["image", "text"],
+  "image_config": {
+    "aspect_ratio": "3:4",
+    "image_size": "2K"
+  }
 }
 ```
 
-如果您的 API 格式不同，请修改 `lib/ai/gemini-client.ts` 中的 `generateImage` 函数。
+输出配置：
+- 宽高比：3:4（适合电商商拍）
+- 分辨率：2K 高清
+- 模态：图片+文本（仅提取图片）
 
 ### Storage Bucket 权限
 

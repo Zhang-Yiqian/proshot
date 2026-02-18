@@ -75,17 +75,44 @@ export default function HomePage() {
         publicUrl = 'https://mock-url.com/original.jpg'
       } else {
         console.log('[Workbench] 正常模式：正在上传图片到 Supabase...')
+        console.log('[Workbench] 文件信息:', {
+          name: selectedFile.name,
+          size: selectedFile.size,
+          type: selectedFile.type
+        })
+        
         const fileExt = selectedFile.name.split('.').pop()
         const fileName = `${user?.id || 'guest'}/${Date.now()}.${fileExt}`
+        console.log('[Workbench] 目标文件名:', fileName)
         
-        const { error: uploadError } = await supabase.storage
+        console.log('[Workbench] 开始上传...')
+        const uploadStartTime = Date.now()
+
+        // 检查 session 状态
+        const { data: sessionData } = await supabase.auth.getSession()
+        console.log('[Workbench] 当前 session:', sessionData?.session ? `已登录 uid=${sessionData.session.user.id}` : '未登录')
+        
+        // 加超时保护（30s）
+        const uploadPromise = supabase.storage
           .from('originals')
-          .upload(fileName, selectedFile)
+          .upload(fileName, selectedFile, { contentType: selectedFile.type })
+
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('上传超时（30s），请检查网络连接')), 30000)
+        )
+
+        const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise])
+
+        const uploadTime = Date.now() - uploadStartTime
+        console.log(`[Workbench] 上传耗时: ${uploadTime}ms`)
 
         if (uploadError) {
           console.error('[Workbench] 上传失败:', uploadError)
+          console.error('[Workbench] 错误详情:', JSON.stringify(uploadError, null, 2))
           throw uploadError
         }
+
+        console.log('[Workbench] 上传成功，返回数据:', uploadData)
 
         const { data } = supabase.storage
           .from('originals')
@@ -96,17 +123,30 @@ export default function HomePage() {
       }
 
       console.log('[Workbench] 正在请求生成 API...')
-      // 使用 Dify 工作流 API
-      const response = await fetch('/api/generate/dify', {
+      console.log('[Workbench] 请求参数:', {
+        originalImageUrl: publicUrl,
+        sceneType: selectedScene,
+        mode,
+      })
+      
+      const apiStartTime = Date.now()
+      
+      // 使用主图生成 API
+      const response = await fetch('/api/generate/main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalImageUrl: publicUrl,
           sceneType: selectedScene,
+          mode,
         }),
       })
 
+      const apiTime = Date.now() - apiStartTime
+      console.log(`[Workbench] API 响应耗时: ${apiTime}ms`)
       console.log('[Workbench] API 响应状态:', response.status)
+      console.log('[Workbench] API 响应头:', Object.fromEntries(response.headers.entries()))
+      
       const result = await response.json()
       console.log('[Workbench] API 响应数据:', result)
 

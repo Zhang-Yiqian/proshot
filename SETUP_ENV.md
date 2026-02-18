@@ -16,12 +16,15 @@
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your_anon_key_here
    SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.your_service_role_key_here
 
-   # Gemini AI 配置
-   GEMINI_API_KEY=sk-your_api_key_here
-   GEMINI_API_BASE_URL=https://your-one-api-domain.com/v1
+   # OpenRouter 配置
+   OPENROUTER_API_KEY=sk-or-v1-your-api-key-here
+   OPENROUTER_API_BASE_URL=https://openrouter.ai/api/v1
 
    # 网站配置
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
+   
+   # 开发调试(可选)
+   NEXT_PUBLIC_MOCK_MODE=true
    ```
 
 3. **替换占位符为您的实际秘钥**
@@ -49,8 +52,8 @@ code .env.local
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase 项目 URL | `https://abc123.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase 公开密钥 | `eyJhbGci...` (很长的字符串) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase 服务端密钥 | `eyJhbGci...` (很长的字符串) |
-| `GEMINI_API_KEY` | Gemini API 密钥 | `sk-xxxxxxxxxxxxxx` |
-| `GEMINI_API_BASE_URL` | API 基础 URL | `https://api.example.com/v1` |
+| `OPENROUTER_API_KEY` | OpenRouter API 密钥 | `sk-or-v1-xxxxxxxxxxxxxx` |
+| `OPENROUTER_API_BASE_URL` | OpenRouter API 基础 URL | `https://openrouter.ai/api/v1` |
 | `NEXT_PUBLIC_SITE_URL` | 网站 URL | `http://localhost:3000` |
 
 ---
@@ -73,30 +76,26 @@ code .env.local
 - ⚠️ `service_role` 密钥拥有完整数据库权限，请勿泄露
 - ✅ `anon` 密钥是公开的，可以在客户端使用
 
-### 2️⃣ Gemini API 秘钥
+### 2️⃣ OpenRouter API 秘钥
 
-#### 选项 A：使用 One API（推荐）
+**获取 OpenRouter API Key：**
+1. 访问 [OpenRouter](https://openrouter.ai/)
+2. 注册并登录账号
+3. 进入 [API Keys 页面](https://openrouter.ai/keys)
+4. 点击 **Create Key** 创建新密钥
+5. 复制密钥 → `OPENROUTER_API_KEY`
+6. Base URL 使用默认值：`https://openrouter.ai/api/v1`
 
-**如果您有 One API 统一接口：**
-1. 登录您的 One API 管理后台
-2. 进入 **令牌管理** 或 **API Keys**
-3. 创建或复制 API Key → `GEMINI_API_KEY`
-4. 复制 API 基础 URL（通常是 `https://your-domain.com/v1`）→ `GEMINI_API_BASE_URL`
-
-#### 选项 B：直接使用 Google Gemini
-
-**如果直接使用 Google AI Studio：**
-1. 访问 [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. 点击 **Get API Key** 创建密钥
-3. 复制密钥 → `GEMINI_API_KEY`
-4. 设置 Base URL 为：
-   ```
-   GEMINI_API_BASE_URL=https://generativelanguage.googleapis.com/v1
-   ```
+**OpenRouter 优势：**
+- ✅ 统一接口调用多个 AI 模型
+- ✅ 支持 Google Gemini 2.5 Flash Image（图像生成）
+- ✅ 按需付费，无需单独配置各模型 API
+- ✅ 自动负载均衡和容错
 
 **注意事项：**
-- 项目代码已按照 OpenAI 兼容格式封装
-- 如果您的 API 格式不同，可能需要修改 `lib/ai/gemini-client.ts`
+- 项目使用 OpenRouter 的标准接口
+- 模型配置在 `config/models.ts` 中
+- 支持多模态输入（图片+文本）
 
 ---
 

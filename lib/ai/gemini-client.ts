@@ -24,6 +24,14 @@ interface GenerateResult {
 export async function generateImage(options: GenerateOptions): Promise<GenerateResult> {
   const { prompt, imageUrl, model = AI_MODELS.MAIN_IMAGE } = options
 
+  console.log('[AI Client] === 开始生成图片 ===')
+  console.log('[AI Client] 配置:', {
+    model,
+    hasImageUrl: !!imageUrl,
+    promptLength: prompt.length,
+    mockMode: MODEL_CONFIG.mockMode
+  })
+
   // Mock 模式处理
   if (MODEL_CONFIG.mockMode) {
     console.log('[AI Client] Mock 模式已开启，返回固定图片')
@@ -36,6 +44,7 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
   }
 
   if (!MODEL_CONFIG.apiKey) {
+    console.error('[AI Client] OpenRouter API Key 未配置')
     return { success: false, error: 'OpenRouter API Key 未配置' }
   }
 
@@ -44,6 +53,7 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
     const content: any[] = []
     
     if (imageUrl) {
+      console.log('[AI Client] 添加参考图片:', imageUrl.substring(0, 100) + '...')
       content.push({
         type: 'image_url',
         image_url: { url: imageUrl },
@@ -55,7 +65,13 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
       text: prompt,
     })
 
-    const response = await fetch(`${MODEL_CONFIG.apiBaseUrl}/chat/completions`, {
+    console.log('[AI Client] Prompt 内容:', prompt.substring(0, 200) + '...')
+
+    const apiUrl = `${MODEL_CONFIG.apiBaseUrl}/chat/completions`
+    console.log('[AI Client] 请求 OpenRouter API:', apiUrl)
+    
+    const requestStartTime = Date.now()
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -66,52 +82,75 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content }],
-        modalities: ['image', 'text'],
-        image_config: {
-          aspect_ratio: MODEL_CONFIG.imageConfig.aspectRatio,
-          image_size: MODEL_CONFIG.imageConfig.imageSize,
-        },
+        modalities: ['text', 'image'],  // text 在前，Gemini 图片生成必须同时指定两种模态
         temperature: MODEL_CONFIG.defaultParams.temperature,
         top_p: MODEL_CONFIG.defaultParams.topP,
       }),
     })
 
+    const requestTime = Date.now() - requestStartTime
+    console.log(`[AI Client] API 响应耗时: ${requestTime}ms, 状态码: ${response.status}`)
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      console.error('[AI Client] API 请求失败:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData
+      })
       throw new Error(errorData.error?.message || `API 请求失败: ${response.status}`)
     }
 
+    console.log('[AI Client] 开始解析响应...')
     const data = await response.json()
+    console.log('[AI Client] 响应数据:', JSON.stringify(data, null, 2).substring(0, 500) + '...')
     
-    // 解析响应中的图片
+    // 解析响应中的图片（根据 OpenRouter 文档）
     const message = data.choices?.[0]?.message
-    
-    // 检查 images 数组
+    console.log('[AI Client] 消息内容类型:', typeof message?.content, Array.isArray(message?.content) ? `数组(${message.content.length})` : '')
+
+    // 优先检查 content 数组（OpenRouter Gemini 图片生成的标准返回格式）
+    if (Array.isArray(message?.content)) {
+      console.log('[AI Client] content 是数组，遍历查找图片部分...')
+      const urls = (message.content as any[])
+        .filter((part: any) => part.type === 'image_url' && part.image_url?.url)
+        .map((part: any) => part.image_url.url as string)
+      
+      if (urls.length > 0) {
+        console.log('[AI Client] ✅ 从 content 数组中解析到图片，数量:', urls.length)
+        console.log('[AI Client] 第一张图片 URL 前缀:', urls[0].substring(0, 60) + '...')
+        return { success: true, imageUrl: urls[0], imageUrls: urls }
+      }
+    }
+
+    // 兼容 images 数组格式
     if (message?.images && Array.isArray(message.images) && message.images.length > 0) {
-      const urls = message.images
+      console.log('[AI Client] 找到 images 数组，图片数量:', message.images.length)
+      const urls = (message.images as any[])
         .map((img: any) => img.image_url?.url || img.imageUrl?.url)
         .filter(Boolean)
       
       if (urls.length > 0) {
-        return { 
-          success: true, 
-          imageUrl: urls[0], 
-          imageUrls: urls 
-        }
+        console.log('[AI Client] ✅ 成功解析图片 URL，数量:', urls.length)
+        return { success: true, imageUrl: urls[0], imageUrls: urls }
       }
     }
     
-    // 检查 content 是否是图片
+    // 兼容 content 直接为图片 URL 的情况
     if (typeof message?.content === 'string') {
-      if (message.content.startsWith('data:image/') || 
-          message.content.startsWith('http')) {
-        return { success: true, imageUrl: message.content }
+      const c = message.content as string
+      if (c.startsWith('data:image/') || c.startsWith('http')) {
+        console.log('[AI Client] ✅ 从 content 字符串解析到图片 URL')
+        return { success: true, imageUrl: c }
       }
     }
 
+    console.error('[AI Client] ❌ 无法从响应中解析图片')
+    console.error('[AI Client] 完整响应数据:', JSON.stringify(data, null, 2))
     throw new Error('无法从响应中解析图片')
   } catch (error) {
-    console.error('[AI Client] 生成失败:', error)
+    console.error('[AI Client] ❌ 生成失败:', error)
+    console.error('[AI Client] 错误详情:', error instanceof Error ? error.stack : error)
     return {
       success: false,
       error: error instanceof Error ? error.message : '生成失败',
@@ -121,12 +160,22 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
 
 /**
  * 生成服装上身图
+ * @param referenceImageUrl 参考图URL
+ * @param sceneId 场景ID（如 'street', 'cafe'）
  */
 export async function generateClothingImage(
   referenceImageUrl: string,
-  sceneType: string
+  sceneId: string
 ): Promise<GenerateResult> {
-  const prompt = `你是一个人像摄影大师，请你帮我把上传的白底图中的衣服穿在一个亚洲模特身上，所在的场景是${sceneType}。要求：1. 保持衣服的款式、颜色、细节完全一致；2. 模特姿态自然优美；3. 光线和场景融合自然。`
+  console.log('[AI Client] === 开始生成服装上身图 ===')
+  console.log('[AI Client] 场景ID:', sceneId)
+  console.log('[AI Client] 参考图URL:', referenceImageUrl)
+  
+  // 使用 prompt-builder 构建完整的 prompt
+  const { buildClothingPrompt } = await import('./prompt-builder')
+  const prompt = buildClothingPrompt(sceneId)
+  
+  console.log('[AI Client] 构建的 Prompt:', prompt.substring(0, 300) + '...')
   
   return generateImage({
     prompt,
@@ -136,13 +185,17 @@ export async function generateClothingImage(
 }
 
 /**
- * 生成物品场景图（预留）
+ * 生成物品场景图
+ * @param referenceImageUrl 参考图URL
+ * @param sceneId 场景ID（如 'living-room', 'desk'）
  */
 export async function generateProductImage(
   referenceImageUrl: string,
-  sceneType: string
+  sceneId: string
 ): Promise<GenerateResult> {
-  const prompt = `你是一个产品摄影大师，请把上传的产品图放置到${sceneType}场景中。要求：1. 保持产品外观完全一致；2. 场景布置美观自然；3. 光影效果专业。`
+  // 使用 prompt-builder 构建完整的 prompt
+  const { buildProductPrompt } = await import('./prompt-builder')
+  const prompt = buildProductPrompt(sceneId)
   
   return generateImage({
     prompt,
