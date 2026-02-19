@@ -6,8 +6,9 @@ description: 智能分析代码变更并生成符合 Conventional Commits 规范
 请按照以下步骤执行：
 
 1.  **Analyze**: 仔细阅读当前工作区的所有未提交变更（Uncommitted Changes）。你需要理解代码修改的意图（是修复了 Bug、增加了功能、还是修改了文档？）。
-2.  **Format**: 根据变更内容，生成符合 **Conventional Commits** 规范的提交信息。
-3.  **Command**: 生成最终的 Shell 命令。
+2.  **detect**: 提交的代码里是否会有可能包含api key等敏感信息，如果包含请直接拒绝我的提交，并告诉我需要如何修改以避免敏感信息。
+3.  **Format**: 根据变更内容，生成符合 **Conventional Commits** 规范的提交信息。
+4.  **Command**: 生成最终的 Shell 命令。
 
 # Commit Message Style Guide
 格式必须遵循：`<Emoji> <Type>: <Description>`

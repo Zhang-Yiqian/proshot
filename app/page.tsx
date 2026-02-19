@@ -1,47 +1,56 @@
 'use client'
 
-import { useState } from 'react'
-import { Sparkles, Loader2, Shirt, Package, Download, Gift, X } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { Sparkles, Loader2, X, Gift, ImageIcon, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
 import { AuthDialog } from '@/components/common/auth-dialog'
+import { GenerationRecordCard } from '@/components/workbench/generation-record-card'
 import { useUser } from '@/hooks/use-user'
 import { createClient } from '@/lib/supabase/client'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
 import { SCENE_PRESETS } from '@/config/presets'
 import { MODEL_CONFIG } from '@/config/models'
+import type { GenerationRecord, GenerationMode } from '@/types/generation-record'
 
-type GenerationMode = 'clothing' | 'product'
+// 调试模式：生成 3 张；正式上线改为 5
+const MULTI_POSE_GENERATE_COUNT = 3
 
 export default function HomePage() {
-  const router = useRouter()
   const { user, profile } = useUser()
   const supabase = createClient()
 
-  // 状态
-  const [mode, setMode] = useState<GenerationMode>('clothing')
+  const mode: GenerationMode = 'clothing'
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [selectedScene, setSelectedScene] = useState('white-bg')
-  const [generating, setGenerating] = useState(false)
   const [showAuthDialog, setShowAuthDialog] = useState(false)
-  const [generatedImage, setGeneratedImage] = useState<string>('')
-  const [multiPoseImages, setMultiPoseImages] = useState<string[]>([])
-  const [generatingMultiPose, setGeneratingMultiPose] = useState(false)
-  const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0) // 当前选中的图片索引
+  const [records, setRecords] = useState<GenerationRecord[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const saved = sessionStorage.getItem('proshot_records')
+      if (!saved) return []
+      const parsed = JSON.parse(saved) as GenerationRecord[]
+      return parsed.map((r) => ({ ...r, timestamp: new Date(r.timestamp) }))
+    } catch {
+      return []
+    }
+  })
 
-  // 调试模式：生成 3 张；正式上线改为 5
-  const MULTI_POSE_SLOTS = 5
-  const MULTI_POSE_GENERATE_COUNT = 3
+  // 每次 records 变化时同步到 sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('proshot_records', JSON.stringify(records))
+    } catch {
+      // sessionStorage 不可用时静默忽略
+    }
+  }, [records])
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
     setPreviewUrl(URL.createObjectURL(file))
-    setGeneratedImage('') // 清除之前的生成结果
-    setMultiPoseImages([])
-    setSelectedImageIndex(0)
   }
 
   const handleClear = () => {
@@ -50,13 +59,9 @@ export default function HomePage() {
       URL.revokeObjectURL(previewUrl)
       setPreviewUrl('')
     }
-    setGeneratedImage('')
-    setMultiPoseImages([])
-    setSelectedImageIndex(0)
   }
 
   const handleGenerate = async () => {
-    // 未登录时弹出注册框（主图 mock 模式下跳过鉴权，无需登录）
     if (!user && !MODEL_CONFIG.mockMode && !MODEL_CONFIG.mockMainImageMode) {
       setShowAuthDialog(true)
       return
@@ -64,13 +69,34 @@ export default function HomePage() {
 
     if (!selectedFile) return
 
-    setGenerating(true)
-    setGeneratedImage('')
-    setMultiPoseImages([])
-    setSelectedImageIndex(0)
-    
-    console.log('[Workbench] 开始生成...', { mode, selectedScene, mockMode: MODEL_CONFIG.mockMode, mockMainImageMode: MODEL_CONFIG.mockMainImageMode })
-    
+    const scene = SCENE_PRESETS.find((s) => s.id === selectedScene)!
+    const recordId = `record-${Date.now()}`
+
+    // 立即新增一条"生成中"记录，出现在时间线顶部
+    const newRecord: GenerationRecord = {
+      id: recordId,
+      timestamp: new Date(),
+      mode,
+      sceneId: selectedScene,
+      sceneName: scene.name,
+      sceneIcon: scene.icon,
+      referenceImageUrl: previewUrl,
+      referenceFileName: selectedFile.name,
+      mainImage: null,
+      generating: true,
+      multiPoseImages: [],
+      generatingMultiPose: false,
+    }
+
+    setRecords((prev) => [newRecord, ...prev])
+
+    console.log('[Workbench] 开始生成...', {
+      mode,
+      selectedScene,
+      mockMode: MODEL_CONFIG.mockMode,
+      mockMainImageMode: MODEL_CONFIG.mockMainImageMode,
+    })
+
     try {
       let publicUrl = ''
 
@@ -79,24 +105,16 @@ export default function HomePage() {
         publicUrl = 'https://mock-url.com/original.jpg'
       } else {
         console.log('[Workbench] 正常模式：正在上传图片到 Supabase...')
-        console.log('[Workbench] 文件信息:', {
-          name: selectedFile.name,
-          size: selectedFile.size,
-          type: selectedFile.type
-        })
-        
+
         const fileExt = selectedFile.name.split('.').pop()
         const fileName = `${user?.id || 'guest'}/${Date.now()}.${fileExt}`
-        console.log('[Workbench] 目标文件名:', fileName)
-        
-        console.log('[Workbench] 开始上传...')
-        const uploadStartTime = Date.now()
 
-        // 检查 session 状态
         const { data: sessionData } = await supabase.auth.getSession()
-        console.log('[Workbench] 当前 session:', sessionData?.session ? `已登录 uid=${sessionData.session.user.id}` : '未登录')
-        
-        // 加超时保护（30s）
+        console.log(
+          '[Workbench] 当前 session:',
+          sessionData?.session ? `已登录 uid=${sessionData.session.user.id}` : '未登录'
+        )
+
         const uploadPromise = supabase.storage
           .from('originals')
           .upload(fileName, selectedFile, { contentType: selectedFile.type })
@@ -105,37 +123,18 @@ export default function HomePage() {
           setTimeout(() => reject(new Error('上传超时（30s），请检查网络连接')), 30000)
         )
 
-        const { data: uploadData, error: uploadError } = await Promise.race([uploadPromise, timeoutPromise])
-
-        const uploadTime = Date.now() - uploadStartTime
-        console.log(`[Workbench] 上传耗时: ${uploadTime}ms`)
+        const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise])
 
         if (uploadError) {
           console.error('[Workbench] 上传失败:', uploadError)
-          console.error('[Workbench] 错误详情:', JSON.stringify(uploadError, null, 2))
           throw uploadError
         }
 
-        console.log('[Workbench] 上传成功，返回数据:', uploadData)
-
-        const { data } = supabase.storage
-          .from('originals')
-          .getPublicUrl(fileName)
-        
+        const { data } = supabase.storage.from('originals').getPublicUrl(fileName)
         publicUrl = data.publicUrl
         console.log('[Workbench] 上传成功，Public URL:', publicUrl)
       }
 
-      console.log('[Workbench] 正在请求生成 API...')
-      console.log('[Workbench] 请求参数:', {
-        originalImageUrl: publicUrl,
-        sceneType: selectedScene,
-        mode,
-      })
-      
-      const apiStartTime = Date.now()
-      
-      // 使用主图生成 API
       const response = await fetch('/api/generate/main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,115 +145,104 @@ export default function HomePage() {
         }),
       })
 
-      const apiTime = Date.now() - apiStartTime
-      console.log(`[Workbench] API 响应耗时: ${apiTime}ms`)
-      console.log('[Workbench] API 响应状态:', response.status)
-      console.log('[Workbench] API 响应头:', Object.fromEntries(response.headers.entries()))
-      
       const result = await response.json()
       console.log('[Workbench] API 响应数据:', result)
 
       if (result.success) {
-        setGeneratedImage(result.imageUrl)
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === recordId ? { ...r, mainImage: result.imageUrl, generating: false } : r
+          )
+        )
         console.log('[Workbench] 生成成功！')
       } else {
+        setRecords((prev) =>
+          prev.map((r) => (r.id === recordId ? { ...r, generating: false } : r))
+        )
         console.error('[Workbench] 生成失败:', result.error)
         alert(result.error || '生成失败，请重试')
       }
     } catch (error) {
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? { ...r, generating: false } : r))
+      )
       console.error('[Workbench] 发生异常:', error)
       alert('生成失败: ' + (error instanceof Error ? error.message : '未知错误'))
-    } finally {
-      console.log('[Workbench] 生成流程结束')
-      setGenerating(false)
     }
   }
 
-  const handleGenerateMultiPose = async () => {
-    if (!generatedImage) return
+  const handleGenerateMultiPose = async (recordId: string) => {
+    const record = records.find((r) => r.id === recordId)
+    if (!record?.mainImage) return
 
-    setGeneratingMultiPose(true)
+    setRecords((prev) =>
+      prev.map((r) => (r.id === recordId ? { ...r, generatingMultiPose: true } : r))
+    )
+
     try {
       const response = await fetch('/api/generate/multi-pose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mainImageUrl: generatedImage,
-        }),
+        body: JSON.stringify({ mainImageUrl: record.mainImage }),
       })
 
       const result = await response.json()
 
       if (result.success && result.imageUrls) {
-        setMultiPoseImages(result.imageUrls)
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === recordId
+              ? { ...r, multiPoseImages: result.imageUrls, generatingMultiPose: false }
+              : r
+          )
+        )
       } else {
+        setRecords((prev) =>
+          prev.map((r) => (r.id === recordId ? { ...r, generatingMultiPose: false } : r))
+        )
         alert(result.error || '生成多视角图失败')
       }
     } catch (error) {
+      setRecords((prev) =>
+        prev.map((r) => (r.id === recordId ? { ...r, generatingMultiPose: false } : r))
+      )
       console.error('多视角生成失败:', error)
       alert('生成多视角图失败，请稍后重试')
-    } finally {
-      setGeneratingMultiPose(false)
     }
   }
 
-  // 构建显示图片列表（主图 + 多视角图）
-  const allImages = generatedImage ? [generatedImage, ...multiPoseImages] : []
+  const currentScene = SCENE_PRESETS.find((s) => s.id === selectedScene)
 
   return (
     <div className="flex min-h-screen flex-col bg-app">
       <Header />
-      
-      {/* Workbench Layout - 左右分栏，无滚动 */}
+
       <main className="flex-1 flex overflow-hidden">
         {/* ========== 左侧配置栏 ========== */}
-        <aside className="w-[360px] h-full border-r border-divider bg-sidebar overflow-y-auto scrollbar-thin">
-          <div className="p-6 space-y-6">
+        <aside className="w-[340px] flex-none h-full border-r border-divider bg-sidebar overflow-y-auto scrollbar-thin">
+          <div className="p-5 space-y-5">
             {/* 标题 */}
-            <div>
-              <h1 className="text-2xl font-semibold mb-2 bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+            <div className="pt-1">
+              <h1 className="text-xl font-bold mb-1 bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
                 一键上镜
               </h1>
-              <p className="text-sm text-muted-foreground">
-                上传商品图，AI 秒变专业商拍
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                上传服装白底图，AI 秒变专业商拍
               </p>
             </div>
 
-            {/* 模式切换 */}
-            <div className="glass-panel p-1">
-              <button
-                onClick={() => setMode('clothing')}
-                className={cn(
-                  "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
-                  mode === 'clothing'
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Shirt className="h-4 w-4" />
-                服装上身
-              </button>
-              <button
-                onClick={() => setMode('product')}
-                disabled
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground/40 cursor-not-allowed mt-1"
-              >
-                <Package className="h-4 w-4" />
-                物品场景
-                <span className="text-xs px-1.5 py-0.5 rounded-md bg-muted/30">即将上线</span>
-              </button>
-            </div>
-
-            {/* 1. 上传商品图 - 紧凑卡片 */}
+            {/* 1. 上传商品图 */}
             <div className="glass-panel p-4 space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
-                上传商品图
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/12 text-primary text-[11px] font-bold">
+                  1
+                </span>
+                上传白底商品图
               </h3>
-              
+
               {previewUrl ? (
                 <div className="relative group">
-                  <div className="aspect-square rounded-xl overflow-hidden bg-muted/30 border border-divider">
+                  <div className="aspect-square rounded-xl overflow-hidden bg-muted/20 border border-divider/60">
                     <img
                       src={previewUrl}
                       alt="Preview"
@@ -263,27 +251,31 @@ export default function HomePage() {
                   </div>
                   <button
                     onClick={handleClear}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-sm text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 backdrop-blur-md text-white opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-black/80"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
-                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] rounded-xl" />
+                  <div className="absolute bottom-2 left-2 right-2">
+                    <div className="glass-thin px-2.5 py-1 text-[11px] text-muted-foreground truncate text-center">
+                      {selectedFile?.name}
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div
                   onClick={() => document.getElementById('file-input')?.click()}
-                  className="aspect-square rounded-xl border-2 border-dashed border-divider hover:border-primary/50 bg-muted/20 hover:bg-primary/5 transition-all cursor-pointer flex flex-col items-center justify-center"
+                  className="aspect-square rounded-xl border-2 border-dashed border-divider hover:border-primary/40 bg-muted/10 hover:bg-primary/5 transition-all duration-200 cursor-pointer flex flex-col items-center justify-center gap-3"
                 >
-                  <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
-                    <Sparkles className="h-6 w-6 text-muted-foreground" />
+                  <div className="w-12 h-12 rounded-2xl glass-panel flex items-center justify-center">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground/60" />
                   </div>
-                  <p className="text-sm font-medium mb-1">点击上传</p>
-                  <p className="text-xs text-muted-foreground">JPG, PNG, WEBP</p>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-foreground/70">点击上传</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">JPG · PNG · WEBP</p>
+                  </div>
                 </div>
               )}
-              
+
               <input
                 id="file-input"
                 type="file"
@@ -298,232 +290,147 @@ export default function HomePage() {
 
             {/* 2. 选择场景 */}
             <div className="glass-panel p-4 space-y-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
-                选择场景
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/12 text-primary text-[11px] font-bold">
+                  2
+                </span>
+                选择拍摄场景
               </h3>
-              
+
               <div className="grid grid-cols-3 gap-2">
                 {SCENE_PRESETS.map((preset) => (
                   <button
                     key={preset.id}
                     onClick={() => setSelectedScene(preset.id)}
                     className={cn(
-                      "flex flex-col items-center justify-center p-3 rounded-lg border transition-all",
+                      'flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200',
                       selectedScene === preset.id
-                        ? "border-primary bg-primary/10 text-primary shadow-sm"
-                        : "border-divider bg-card/30 hover:border-primary/30 hover:bg-card/50"
+                        ? 'border-primary/40 bg-primary/8 shadow-sm shadow-primary/10'
+                        : 'border-divider/60 bg-muted/10 hover:border-primary/25 hover:bg-muted/20'
                     )}
                   >
-                    <span className="text-xl mb-1">{preset.icon}</span>
-                    <span className="text-xs font-medium text-center leading-tight">{preset.name}</span>
+                    <span className="text-lg mb-1 leading-none">{preset.icon}</span>
+                    <span
+                      className={cn(
+                        'text-[11px] font-medium text-center leading-tight',
+                        selectedScene === preset.id ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                    >
+                      {preset.name}
+                    </span>
                   </button>
                 ))}
               </div>
+
+              {currentScene && (
+                <p className="text-[11px] text-muted-foreground/70 bg-muted/20 rounded-lg px-3 py-2 leading-relaxed">
+                  {currentScene.description}
+                </p>
+              )}
             </div>
 
-            {/* 3. 生成按钮 - Sticky Bottom */}
-            <div className="sticky bottom-0 left-0 right-0 bg-sidebar/80 backdrop-blur-xl pt-4 pb-2 space-y-3">
+            {/* 3. 生成按钮 */}
+            <div className="sticky bottom-0 left-0 right-0 bg-sidebar/80 backdrop-blur-xl pt-3 pb-2 space-y-2.5">
               <Button
                 size="lg"
-                className="w-full h-12 text-base font-medium gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-                disabled={!selectedFile || generating}
+                className={cn(
+                  'w-full h-11 text-sm font-semibold gap-2 transition-all duration-200',
+                  'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground',
+                  'shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35',
+                  'disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed'
+                )}
+                disabled={!selectedFile}
                 onClick={handleGenerate}
               >
-                {generating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    AI 正在创作...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-5 w-5" />
-                    一键上镜
-                    {!user && <span className="text-xs opacity-80">（需注册）</span>}
-                  </>
-                )}
+                <Sparkles className="h-4 w-4" />
+                一键上镜
+                {!user && <span className="text-xs opacity-70 font-normal">（需注册）</span>}
               </Button>
 
-              {/* 提示信息 */}
               {!user ? (
-                <p className="text-xs text-center text-muted-foreground">
-                  <Gift className="inline h-3.5 w-3.5 mr-1 text-primary" />
+                <p className="text-[11px] text-center text-muted-foreground">
+                  <Gift className="inline h-3 w-3 mr-1 text-primary/70" />
                   新用户注册即送 {siteConfig.credits.initial} 积分
                 </p>
-              ) : profile && (
-                <p className="text-xs text-center text-muted-foreground">
-                  当前积分：<span className="text-primary font-mono font-semibold">{profile.credits}</span>
-                  <span className="mx-1.5">•</span>
-                  预览免费，下载 1 积分/张
-                </p>
+              ) : (
+                profile && (
+                  <p className="text-[11px] text-center text-muted-foreground">
+                    积分：
+                    <span className="text-primary font-mono font-bold">{profile.credits}</span>
+                    <span className="mx-1 opacity-40">·</span>
+                    预览免费，下载 1 积分/张
+                  </p>
+                )
               )}
             </div>
           </div>
         </aside>
 
-        {/* ========== 右侧画布区域 (左右结构) ========== */}
-        <div className="flex-1 flex bg-preview overflow-hidden">
-          {/* 主图区域 (左侧,占大部分空间) */}
-          <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-hidden">
-            {allImages.length > 0 ? (
-              <div className="relative flex flex-col items-center gap-6 max-w-full">
-                {/* 主图容器 - 动态大小,最大化利用空间 */}
-                <div className="relative w-full max-w-[600px] aspect-[3/4] rounded-2xl overflow-hidden bg-muted/10 border border-divider shadow-2xl">
-                  <img
-                    src={allImages[selectedImageIndex]}
-                    alt="Generated"
-                    className="w-full h-full object-cover"
-                  />
-                  {/* 水印提示 */}
-                  <div className="absolute bottom-4 inset-x-0 flex justify-center pointer-events-none">
-                    <div className="glass-panel px-4 py-2 text-sm text-muted-foreground">
-                      预览图 • 下载高清无水印图需消耗 1 积分
-                    </div>
-                  </div>
-                  
-                  {/* 下载按钮 */}
-                  <div className="absolute top-4 right-4">
-                    <Button size="sm" className="gap-2 glass-panel h-9 px-4 shadow-lg">
-                      <Download className="h-4 w-4" />
-                      下载
-                    </Button>
-                  </div>
-
-                  {/* 图片索引指示 */}
-                  {allImages.length > 1 && (
-                    <div className="absolute top-4 left-4 glass-panel px-3 py-1.5 text-sm font-medium">
-                      {selectedImageIndex + 1} / {allImages.length}
-                    </div>
-                  )}
+        {/* ========== 右侧时间线 Feed ========== */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin bg-feed">
+          {records.length === 0 ? (
+            /* 空状态 */
+            <div className="h-full flex flex-col items-center justify-center gap-6 p-8">
+              <div className="glass-deep rounded-3xl p-10 flex flex-col items-center gap-5 max-w-sm text-center">
+                <div className="w-16 h-16 rounded-2xl glass-panel flex items-center justify-center">
+                  <Layers className="h-7 w-7 text-primary/40" />
                 </div>
-
-                {/* 多姿势生成按钮 */}
-                {generatedImage && !generatingMultiPose && multiPoseImages.length === 0 && (
-                  <Button
-                    size="lg"
-                    className="gap-2 h-12 px-8 bg-gradient-to-r from-primary to-secondary text-white font-medium shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 transition-all"
-                    onClick={handleGenerateMultiPose}
-                  >
-                    <Sparkles className="h-5 w-5" />
-                    生成多姿势套图
-                  </Button>
-                )}
-                {generatingMultiPose && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    正在生成 {MULTI_POSE_GENERATE_COUNT} 张多姿势图，请稍候...
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="w-24 h-24 rounded-2xl bg-muted/20 border border-divider flex items-center justify-center mb-4 mx-auto">
-                  <Sparkles className="h-12 w-12 text-muted-foreground/20" />
+                <div>
+                  <h2 className="text-base font-semibold text-foreground/70 mb-1.5">
+                    生成记录将显示在这里
+                  </h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    在左侧上传服装图片，选择场景后<br />点击「一键上镜」开始创作
+                  </p>
                 </div>
-                <p className="text-muted-foreground mb-2 text-base font-medium">生成的图片将显示在这里</p>
-                <p className="text-sm text-muted-foreground/60">
-                  上传图片 → 选择场景 → 点击生成
-                </p>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-primary">1</span>
+                    </div>
+                    上传图片
+                  </div>
+                  <div className="w-4 h-px bg-divider" />
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-primary">2</span>
+                    </div>
+                    选择场景
+                  </div>
+                  <div className="w-4 h-px bg-divider" />
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-primary">3</span>
+                    </div>
+                    生成上镜
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            /* 时间线记录 */
+            <div className="p-6 space-y-4">
+              {/* 记录数量提示 */}
+              <div className="flex items-center gap-2 px-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
+                  <Layers className="h-3.5 w-3.5" />
+                  <span>共 {records.length} 条生成记录</span>
+                </div>
+              </div>
 
-          {/* 缩略图列表 (右侧,垂直排列) */}
-          {(allImages.length > 1 || generatingMultiPose) && (
-            <div className="w-[200px] border-l border-divider bg-sidebar/30 p-4 overflow-y-auto scrollbar-thin">
-              <div className="flex flex-col gap-3">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-1 px-1">
-                  套图 ({generatingMultiPose ? `生成中...` : `${allImages.length}/${1 + MULTI_POSE_SLOTS}`})
-                </h3>
-                
-                {generatingMultiPose && multiPoseImages.length === 0 ? (
-                  // 加载占位符：主图 + 5 个多姿势占位
-                  <>
-                    {allImages.map((img, i) => (
-                      <button
-                        key={`existing-${i}`}
-                        onClick={() => setSelectedImageIndex(i)}
-                        className={cn(
-                          "relative w-full aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all",
-                          selectedImageIndex === i
-                            ? "border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20"
-                            : "border-divider hover:border-primary/60 opacity-75 hover:opacity-100"
-                        )}
-                      >
-                        <img
-                          src={img}
-                          alt={`缩略图 ${i + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        {selectedImageIndex === i && (
-                          <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-primary shadow-lg" />
-                        )}
-                      </button>
-                    ))}
-                    {Array.from({ length: MULTI_POSE_SLOTS }).map((_, i) => (
-                      <div
-                        key={`loading-${i}`}
-                        className="w-full aspect-[3/4] rounded-xl bg-muted/30 border-2 border-dashed border-divider flex flex-col items-center justify-center animate-pulse"
-                      >
-                        <Loader2 className="h-6 w-6 text-primary/40 animate-spin mb-1" />
-                        <p className="text-xs text-muted-foreground">姿势 {i + 1}</p>
-                      </div>
-                    ))}
-                  </>
-                ) : (
-                  // 所有缩略图：已生成的图片 + 剩余空位
-                  <>
-                    {allImages.map((img, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setSelectedImageIndex(i)}
-                        className={cn(
-                          "relative w-full aspect-[3/4] rounded-xl overflow-hidden border-2 transition-all duration-200",
-                          selectedImageIndex === i
-                            ? "border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20"
-                            : "border-divider hover:border-primary/60 opacity-75 hover:opacity-100"
-                        )}
-                      >
-                        <img
-                          src={img}
-                          alt={`缩略图 ${i + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        {selectedImageIndex === i && (
-                          <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-primary shadow-lg" />
-                        )}
-                        <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-white text-xs font-medium">
-                          {i === 0 ? '主图' : `姿势${i}`}
-                        </div>
-                      </button>
-                    ))}
-                    {/* 空位：未生成的多姿势槽位 */}
-                    {multiPoseImages.length > 0 &&
-                      Array.from({ length: MULTI_POSE_SLOTS - multiPoseImages.length }).map((_, i) => (
-                        <div
-                          key={`empty-${i}`}
-                          className="w-full aspect-[3/4] rounded-xl bg-muted/10 border-2 border-dashed border-divider/40 flex flex-col items-center justify-center"
-                        >
-                          <div className="w-7 h-7 rounded-full bg-muted/30 flex items-center justify-center mb-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-muted-foreground/30" />
-                          </div>
-                          <p className="text-xs text-muted-foreground/40">即将上线</p>
-                        </div>
-                      ))
-                    }
-                  </>
-                )}
-              </div>
+              {records.map((record) => (
+                <GenerationRecordCard
+                  key={record.id}
+                  record={record}
+                  onGenerateMultiPose={() => handleGenerateMultiPose(record.id)}
+                />
+              ))}
             </div>
           )}
         </div>
       </main>
 
-      {/* 认证弹窗 */}
-      <AuthDialog 
-        open={showAuthDialog} 
-        onClose={() => setShowAuthDialog(false)}
-      />
+      <AuthDialog open={showAuthDialog} onClose={() => setShowAuthDialog(false)} />
     </div>
   )
 }
