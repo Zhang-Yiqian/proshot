@@ -54,13 +54,14 @@ const config = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "0",
+        md: "0",
+        sm: "0",
       },
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        display: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'sans-serif'],
+        serif: ['var(--font-heading)', 'Georgia', 'serif'],
+        display: ['var(--font-heading)', 'Times New Roman', 'serif'],
         mono: ['SF Mono', 'Monaco', 'Consolas', 'monospace'],
       },
       keyframes: {

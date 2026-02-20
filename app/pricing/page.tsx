@@ -3,144 +3,152 @@
 import { Check, Sparkles, ArrowLeft, Zap, Crown, Building } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 const PRICING_PLANS = [
   {
-    name: '基础包',
+    name: 'Standard',
     icon: Zap,
     credits: 50,
     price: 49,
     pricePerCredit: '0.98',
-    features: ['50 积分', '下载 50 张高清图', '有效期 3 个月', '标准生成速度'],
+    features: ['50 Credits', 'HD Downloads', '3 Months Validity', 'Standard Speed'],
     popular: false,
   },
   {
-    name: '专业包',
+    name: 'Professional',
     icon: Crown,
     credits: 200,
     price: 159,
     pricePerCredit: '0.80',
-    features: ['200 积分', '下载 200 张高清图', '有效期 6 个月', '优先生成速度', '邮件支持'],
+    features: ['200 Credits', 'HD Downloads', '6 Months Validity', 'Priority Speed', 'Email Support'],
     popular: true,
   },
   {
-    name: '企业包',
+    name: 'Enterprise',
     icon: Building,
     credits: 500,
     price: 349,
     pricePerCredit: '0.70',
-    features: ['500 积分', '下载 500 张高清图', '有效期 12 个月', '最高优先级', '专属客服', 'API 接入'],
+    features: ['500 Credits', 'HD Downloads', '12 Months Validity', 'Highest Priority', 'Dedicated Support', 'API Access'],
     popular: false,
   },
 ]
 
 export default function PricingPage() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-white text-black font-sans selection:bg-black selection:text-white">
       <Header />
       
-      <main className="flex-1">
-        <section className="container py-12">
-          {/* 返回链接 */}
+      <main className="flex-1 border-t border-black">
+        <section className="container py-24 max-w-7xl mx-auto px-6">
+          {/* Back Link */}
           <Link 
             href="/"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-8"
+            className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-gray-500 mb-12 transition-colors group"
           >
-            <ArrowLeft className="h-4 w-4" />
-            返回首页
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+            Back to Studio
           </Link>
 
-          {/* 标题 */}
-          <div className="text-center mb-12">
-            <h1 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              选择适合您的<span className="text-gradient">套餐</span>
+          {/* Title */}
+          <div className="text-center mb-20 border-b border-black pb-12">
+            <h1 className="text-5xl md:text-6xl font-serif font-bold italic mb-6">
+              The Collection
             </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              灵活的积分套餐，用多少买多少，无隐藏费用
+            <p className="text-sm font-sans uppercase tracking-widest text-gray-500 max-w-xl mx-auto">
+              Select your plan. No hidden fees. Pure creation.
             </p>
           </div>
 
-          {/* 价格卡片 */}
-          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+          {/* Pricing Cards */}
+          <div className="grid gap-8 md:grid-cols-3">
             {PRICING_PLANS.map((plan) => (
               <div
                 key={plan.name}
                 className={cn(
-                  "glass-card p-6 relative",
-                  plan.popular && "border-primary/50 md:scale-105"
+                  "relative border border-black p-8 transition-all duration-300 group hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]",
+                  plan.popular ? "bg-black text-white" : "bg-white text-black hover:bg-black hover:text-white"
                 )}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-xs font-semibold text-white">
-                    最受欢迎
+                  <div className="absolute top-0 right-0 bg-white text-black px-4 py-1 text-[10px] font-bold uppercase tracking-widest border-l border-b border-black">
+                    Most Popular
                   </div>
                 )}
 
-                {/* 图标和名称 */}
-                <div className="flex items-center gap-3 mb-4">
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-8">
                   <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center",
-                    plan.popular ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    "w-12 h-12 border flex items-center justify-center rounded-none",
+                    plan.popular ? "border-white bg-white text-black" : "border-black bg-black text-white group-hover:bg-white group-hover:text-black"
                   )}>
-                    <plan.icon className="h-5 w-5" />
+                    <plan.icon className="h-6 w-6" />
                   </div>
-                  <h3 className="text-xl font-semibold">{plan.name}</h3>
+                  <h3 className="text-2xl font-serif italic">{plan.name}</h3>
                 </div>
 
-                {/* 价格 */}
-                <div className="mb-6">
+                {/* Price */}
+                <div className="mb-8 pb-8 border-b border-gray-800 group-hover:border-gray-800">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold font-mono">¥{plan.price}</span>
+                    <span className="text-4xl font-bold font-serif">¥{plan.price}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    约 ¥{plan.pricePerCredit}/张
+                  <p className={cn(
+                    "text-xs mt-2 uppercase tracking-widest opacity-60",
+                    plan.popular ? "text-gray-300" : "text-gray-500 group-hover:text-gray-300"
+                  )}>
+                    approx ¥{plan.pricePerCredit} / Image
                   </p>
                 </div>
 
-                {/* 功能列表 */}
-                <ul className="space-y-3 mb-6">
+                {/* Features */}
+                <ul className="space-y-4 mb-8">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
+                    <li key={feature} className="flex items-start gap-3">
+                      <Check className={cn(
+                        "h-4 w-4 shrink-0 mt-0.5",
+                        plan.popular ? "text-white" : "text-black group-hover:text-white"
+                      )} />
+                      <span className="text-sm font-medium">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
-                {/* 购买按钮 */}
+                {/* Action */}
                 <Button 
                   className={cn(
-                    "w-full",
-                    plan.popular && "btn-glow"
+                    "w-full h-12 rounded-none uppercase tracking-widest font-bold text-xs border border-white transition-all",
+                    plan.popular 
+                      ? "bg-white text-black hover:bg-gray-200" 
+                      : "bg-black text-white hover:bg-white hover:text-black border-black group-hover:border-white"
                   )} 
-                  variant={plan.popular ? 'default' : 'outline'}
                 >
-                  立即购买
+                  Purchase Now
                 </Button>
               </div>
             ))}
           </div>
 
-          {/* 企业定制 */}
-          <div className="mt-16 text-center">
-            <div className="glass-card p-8 max-w-2xl mx-auto">
-              <h3 className="text-xl font-semibold mb-2">需要更多积分？</h3>
-              <p className="text-muted-foreground mb-6">
-                联系我们定制企业专属方案，享受更优惠的价格
+          {/* Enterprise */}
+          <div className="mt-24 text-center border-t border-black pt-12">
+            <div className="max-w-2xl mx-auto space-y-6">
+              <h3 className="text-2xl font-serif italic">Need a Custom Fit?</h3>
+              <p className="text-gray-500 text-sm uppercase tracking-widest">
+                Contact us for enterprise solutions and bulk credits.
               </p>
-              <Button variant="outline" size="lg" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                联系销售
+              <Button size="lg" className="bg-white text-black border border-black hover:bg-black hover:text-white rounded-none uppercase tracking-widest text-xs px-8 h-12">
+                Contact Sales
               </Button>
             </div>
           </div>
         </section>
       </main>
-
-      <Footer />
+      
+      {/* Minimal Footer */}
+      <footer className="border-t border-black py-12 text-center text-xs uppercase tracking-widest text-gray-500">
+        <p>&copy; {new Date().getFullYear()} ProShot Studio. All Rights Reserved.</p>
+      </footer>
     </div>
   )
 }

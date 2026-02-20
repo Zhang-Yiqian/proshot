@@ -43,7 +43,7 @@ export function UploadZone({ onFileSelect, onClear, previewUrl, className }: Upl
 
   if (previewUrl) {
     return (
-      <div className={cn("relative rounded-xl overflow-hidden glass-card", className)}>
+      <div className={cn("relative border border-black overflow-hidden bg-gray-50", className)}>
         <img
           src={previewUrl}
           alt="Preview"

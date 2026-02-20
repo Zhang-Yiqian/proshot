@@ -34,13 +34,13 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
     try {
       if (mode === 'register') {
         if (password !== confirmPassword) {
-          setError('两次输入的密码不一致')
+          setError('Passwords do not match')
           setLoading(false)
           return
         }
 
         if (password.length < 6) {
-          setError('密码长度至少为6位')
+          setError('Password must be at least 6 characters')
           setLoading(false)
           return
         }
@@ -67,7 +67,7 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
         router.refresh()
       }
     } catch (err: any) {
-      setError(err.message || '操作失败，请稍后重试')
+      setError(err.message || 'Operation failed, please try again')
     } finally {
       setLoading(false)
     }
@@ -75,68 +75,68 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
 
   return (
     <>
-      {/* 遮罩 */}
+      {/* Overlay */}
       <div 
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
       
-      {/* 弹窗 */}
+      {/* Dialog */}
       <div className="fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 w-full max-w-md animate-scale-in">
-        <div className="glass-card p-6 mx-4">
-          {/* 关闭按钮 */}
+        <div className="bg-white border border-black p-8 shadow-[12px_12px_0px_0px_#000] mx-4">
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute right-4 top-4 p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            className="absolute right-4 top-4 p-2 text-black hover:bg-black hover:text-white transition-colors border border-transparent hover:border-black"
           >
             <X className="h-4 w-4" />
           </button>
           
-          {/* 头部 */}
-          <div className="text-center mb-6">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary">
-              <Sparkles className="h-7 w-7 text-white" />
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center border border-black bg-black text-white">
+              <Sparkles className="h-8 w-8" />
             </div>
             
-            <h2 className="text-2xl font-display font-bold mb-2">
-              {mode === 'register' ? '创建账户' : '欢迎回来'}
+            <h2 className="text-3xl font-serif font-bold italic mb-2 tracking-tight">
+              {mode === 'register' ? 'Join the Studio' : 'Welcome Back'}
             </h2>
             
             {mode === 'register' && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm">
-                <Gift className="h-3.5 w-3.5" />
-                <span>注册即送 {siteConfig.credits.initial} 积分</span>
+              <div className="inline-flex items-center gap-2 px-4 py-1 border border-black text-xs font-bold uppercase tracking-widest mt-2">
+                <Gift className="h-3 w-3" />
+                <span>Get {siteConfig.credits.initial} Credits Free</span>
               </div>
             )}
           </div>
           
-          {/* 表单 */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">邮箱</label>
+              <label className="text-xs font-bold uppercase tracking-widest block">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="email"
                   placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-12 border-black focus-visible:ring-black rounded-none"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">密码</label>
+              <label className="text-xs font-bold uppercase tracking-widest block">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   type="password"
-                  placeholder={mode === 'register' ? '至少6位字符' : '输入密码'}
+                  placeholder={mode === 'register' ? 'Min 6 chars' : 'Enter password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-12 border-black focus-visible:ring-black rounded-none"
                   required
                 />
               </div>
@@ -144,15 +144,15 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
 
             {mode === 'register' && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">确认密码</label>
+                <label className="text-xs font-bold uppercase tracking-widest block">Confirm Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     type="password"
-                    placeholder="再次输入密码"
+                    placeholder="Confirm password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 h-12 border-black focus-visible:ring-black rounded-none"
                     required
                   />
                 </div>
@@ -160,45 +160,45 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
             )}
 
             {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
+              <div className="text-xs text-red-600 border border-red-600 bg-red-50 p-3 font-medium">
                 {error}
               </div>
             )}
 
-            <Button type="submit" className="w-full btn-glow" disabled={loading}>
+            <Button type="submit" className="w-full h-12 bg-black text-white hover:bg-white hover:text-black border border-black rounded-none uppercase tracking-widest font-bold text-sm transition-all shadow-[4px_4px_0_0_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {mode === 'register' ? '注册中...' : '登录中...'}
+                  Processing...
                 </>
               ) : (
-                mode === 'register' ? '注册并继续' : '登录'
+                mode === 'register' ? 'Create Account' : 'Sign In'
               )}
             </Button>
           </form>
 
-          {/* 切换模式 */}
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          {/* Toggle Mode */}
+          <div className="mt-8 text-center text-xs uppercase tracking-widest text-gray-500 border-t border-gray-100 pt-6">
             {mode === 'register' ? (
               <>
-                已有账户？{' '}
+                Already a member?{' '}
                 <button
                   type="button"
                   onClick={() => setMode('login')}
-                  className="text-primary font-medium hover:underline"
+                  className="text-black font-bold border-b border-black hover:opacity-70 ml-1"
                 >
-                  立即登录
+                  Log In
                 </button>
               </>
             ) : (
               <>
-                还没有账户？{' '}
+                New here?{' '}
                 <button
                   type="button"
                   onClick={() => setMode('register')}
-                  className="text-primary font-medium hover:underline"
+                  className="text-black font-bold border-b border-black hover:opacity-70 ml-1"
                 >
-                  免费注册
+                  Join Now
                 </button>
               </>
             )}

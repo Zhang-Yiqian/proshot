@@ -8,14 +8,14 @@ const MULTI_POSE_SLOTS = 5
 
 function formatRelativeTime(date: Date): string {
   const diff = Date.now() - date.getTime()
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
-  return `${Math.floor(diff / 86400000)} 天前`
+  if (diff < 60000) return 'Just Now'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+  return `${Math.floor(diff / 86400000)}d ago`
 }
 
 function formatTime(date: Date): string {
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 interface GenerationRecordCardProps {
@@ -43,57 +43,43 @@ function ImageCard({
   return (
     <div
       className={cn(
-        'relative flex-none w-[165px] h-[220px] rounded-2xl overflow-hidden transition-all duration-300',
+        'relative flex-none w-[200px] h-[280px] overflow-hidden transition-all duration-300 bg-gray-50',
         src
-          ? 'border border-white/60 shadow-lg shadow-black/10'
+          ? 'border border-black'
           : isEmpty
-          ? 'border-2 border-dashed border-divider/30 bg-muted/10'
-          : 'border border-divider/40 bg-muted/20'
+          ? 'border border-dashed border-gray-300 bg-gray-50'
+          : 'border border-gray-100 bg-gray-50'
       )}
     >
       {src ? (
         <>
-          <img src={src} alt={label} className="w-full h-full object-cover" />
-          {/* 悬停遮罩 */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200">
-            {onDownload && (
-              <button
-                onClick={onDownload}
-                className="absolute bottom-3 right-3 p-2 rounded-xl glass-thin text-white hover:scale-105 transition-transform"
-                title="下载图片"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-          {/* 标签 */}
-          <div className="absolute bottom-2.5 left-2.5">
-            <span
-              className={cn(
-                'px-2 py-0.5 rounded-lg text-[11px] font-semibold text-white',
-                isMain
-                  ? 'bg-gradient-to-r from-primary/90 to-secondary/80 shadow-sm'
-                  : 'bg-black/60 backdrop-blur-sm'
-              )}
+          <img src={src} alt={label} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-500" />
+          
+          {/* Download Button - Minimal */}
+          {onDownload && (
+            <button
+              onClick={onDownload}
+              className="absolute bottom-3 right-3 p-2 bg-white border border-black text-black hover:bg-black hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+              title="Download"
             >
-              {label}
-            </span>
+              <Download className="h-4 w-4" />
+            </button>
+          )}
+          
+          {/* Label - Editorial Tag */}
+          <div className="absolute top-0 left-0 bg-black text-white px-2 py-1 text-[10px] uppercase tracking-widest font-medium">
+            {label}
           </div>
         </>
       ) : isLoading ? (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-primary/5 to-secondary/5">
-          <div className="relative">
-            <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-            <Sparkles className="absolute inset-0 m-auto h-3.5 w-3.5 text-primary/60" />
-          </div>
-          <span className="text-[11px] text-muted-foreground font-medium">{label}</span>
+        <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-4 text-center">
+           <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
+           <span className="text-xs font-serif italic text-gray-500">Creating Masterpiece...</span>
         </div>
       ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-40">
-          <div className="w-8 h-8 rounded-xl bg-muted/40 flex items-center justify-center">
-            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <span className="text-[11px] text-muted-foreground">姿势 {slotNumber}</span>
+        <div className="w-full h-full flex flex-col items-center justify-center gap-2 opacity-30">
+          <span className="text-4xl font-serif text-gray-300">{slotNumber}</span>
+          <span className="text-[10px] uppercase tracking-widest text-gray-400">Empty Slot</span>
         </div>
       )}
     </div>
@@ -114,110 +100,89 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
   }
 
   return (
-    <div className="glass-deep rounded-3xl p-5 space-y-4 group">
-      {/* ===== 顶部信息行 ===== */}
-      <div className="flex items-start gap-3">
-        {/* 参考图缩略图 */}
-        <div className="flex-none w-12 h-12 rounded-xl overflow-hidden border border-white/60 shadow-sm bg-muted/20">
+    <div className="border border-black p-0 mb-8 bg-white group hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transition-shadow duration-300">
+      {/* ===== Header / Metadata ===== */}
+      <div className="flex items-stretch border-b border-black">
+        {/* Reference Image - Small Square */}
+        <div className="w-24 h-24 flex-none border-r border-black relative bg-gray-100">
           {record.referenceImageUrl ? (
-            <img
-              src={record.referenceImageUrl}
-              alt="参考图"
-              className="w-full h-full object-cover"
-            />
+             <>
+              <img
+                src={record.referenceImageUrl}
+                alt="Reference"
+                className="w-full h-full object-cover mix-blend-multiply opacity-80"
+              />
+              <div className="absolute bottom-0 left-0 bg-white border-t border-r border-black px-1 text-[9px] font-bold uppercase">REF</div>
+             </>
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <ImageIcon className="h-4 w-4 text-muted-foreground/40" />
+              <ImageIcon className="h-6 w-6 text-gray-300" />
             </div>
           )}
         </div>
 
-        {/* 场景与信息 */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-base leading-none">{record.sceneIcon}</span>
-            <span className="text-sm font-semibold text-foreground">{record.sceneName}</span>
-            <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-medium">
-              {record.mode === 'clothing' ? '服装上身' : '物品场景'}
-            </span>
-            {totalImages > 0 && !record.generating && (
-              <span className="px-1.5 py-0.5 rounded-md bg-muted/40 text-muted-foreground text-[11px]">
-                <Layers className="inline h-3 w-3 mr-0.5 -mt-0.5" />
-                {hasPoses ? `${totalImages}/6 张` : '1 张主图'}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mt-1.5">
-            <Clock className="h-3 w-3 text-muted-foreground/50" />
-            <span className="text-[11px] text-muted-foreground/60">
-              {formatRelativeTime(record.timestamp)} · {formatTime(record.timestamp)}
-            </span>
-            {record.referenceFileName && (
-              <>
-                <span className="text-muted-foreground/30">·</span>
-                <span className="text-[11px] text-muted-foreground/50 truncate max-w-[120px]">
-                  {record.referenceFileName}
-                </span>
-              </>
-            )}
-          </div>
+        {/* Info Column */}
+        <div className="flex-1 p-4 flex flex-col justify-between">
+           <div className="flex justify-between items-start">
+             <div>
+               <h3 className="font-serif text-xl font-bold italic flex items-center gap-2">
+                 {record.sceneName}
+                 <span className="not-italic text-xs font-sans font-normal border border-black px-1.5 py-0.5 uppercase tracking-wider">
+                   {record.mode === 'clothing' ? 'Apparel' : 'Product'}
+                 </span>
+               </h3>
+               <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 uppercase tracking-widest">
+                 <span>{formatRelativeTime(record.timestamp)}</span>
+                 <span>—</span>
+                 <span>ID: {record.id.slice(-6)}</span>
+               </div>
+             </div>
+             
+             {/* Status Badge */}
+             {record.generating && (
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest animate-pulse">
+                  <span className="w-2 h-2 bg-black rounded-full" />
+                  Generating
+                </div>
+             )}
+           </div>
         </div>
-
-        {/* 右侧状态 */}
-        {record.generating && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span className="text-xs font-medium">AI 创作中</span>
-          </div>
-        )}
-        {record.generatingMultiPose && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span className="text-xs font-medium">生成套图中</span>
-          </div>
-        )}
       </div>
 
-      {/* ===== 图片横向滚动区 ===== */}
-      <div className="relative">
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-          {/* 主图 */}
+      {/* ===== Image Strip ===== */}
+      <div className="p-6 bg-white overflow-x-auto">
+        <div className="flex gap-4">
+          {/* Main Image */}
           <ImageCard
             src={record.mainImage ?? undefined}
-            label="主图"
+            label="Editorial Main"
             isMain
             isLoading={record.generating && !record.mainImage}
             onDownload={record.mainImage ? () => handleDownload(record.mainImage!) : undefined}
           />
 
-          {/* 生成套图触发按钮（主图与第一个姿势位之间） */}
+          {/* Generate More Button - Vertical Strip */}
           {canGeneratePoses && (
-            <div className="flex-none flex items-center">
-              <button
-                onClick={onGenerateMultiPose}
-                className="btn-generate-suite flex flex-col items-center justify-center gap-1.5 w-11 h-[220px] rounded-2xl text-white"
-                title="生成多姿势套图"
-              >
-                <Sparkles className="h-4 w-4" />
-                <div className="flex flex-col items-center gap-0.5">
-                  {['生', '成', '套', '图'].map((char, i) => (
-                    <span key={i} className="text-[11px] font-semibold leading-tight">
-                      {char}
-                    </span>
-                  ))}
-                </div>
-              </button>
-            </div>
+            <button
+              onClick={onGenerateMultiPose}
+              className="flex-none w-12 h-[280px] border border-black bg-black text-white hover:bg-white hover:text-black transition-all duration-300 flex flex-col items-center justify-center gap-4 group/btn"
+              title="Generate Collection"
+            >
+              <Sparkles className="h-5 w-5" />
+              <span className="text-xs font-bold uppercase tracking-[0.2em] [writing-mode:vertical-rl] rotate-180">
+                Generate Collection
+              </span>
+            </button>
           )}
 
-          {/* 多姿势图卡片 */}
+          {/* Pose Slots */}
           {Array.from({ length: MULTI_POSE_SLOTS }).map((_, i) => {
             const poseImage = record.multiPoseImages[i]
             return (
               <ImageCard
                 key={i}
                 src={poseImage}
-                label={`姿势 ${i + 1}`}
+                label={`Look ${i + 1}`}
                 isLoading={record.generatingMultiPose && !poseImage}
                 isEmpty={!record.generatingMultiPose && !poseImage && !canGeneratePoses}
                 slotNumber={i + 1}
@@ -226,9 +191,6 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
             )
           })}
         </div>
-
-        {/* 右侧渐变遮罩（指示可横滑） */}
-        <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-white/60 to-transparent pointer-events-none rounded-r-2xl" />
       </div>
     </div>
   )

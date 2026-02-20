@@ -3,89 +3,90 @@
 @tailwind utilities;
 
 /* ========================================
-   ProShot 设计系统 - Apple 液态玻璃风格
-   轻盈、时尚、精致
+   ProShot Vogue - High Fashion Editorial
+   Minimal, Sharp, Sophisticated
    ======================================== */
 
 @layer base {
-  :root, .light {
-    /* 基础背景 - 纯净白 */
+  :root {
+    /* Base - Pure White */
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 0 0% 0%;
     
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 0 0% 0%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 0 0% 0%;
     
-    /* 主色 - 优雅蓝紫 */
-    --primary: 250 80% 60%;
+    /* Primary - Jet Black */
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 100%;
     
-    /* 次要色 - 清新青色 */
-    --secondary: 195 85% 50%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary - Very Light Gray */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
     
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
     
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 100%;
     
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 250 80% 60%;
+    --border: 0 0% 0%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
     
-    --divider: 240 5.9% 90%;
+    --divider: 0 0% 90%;
     
-    /* 区域背景优化 */
-    --app-bg: 0 0% 98%;
+    --radius: 0rem;
+    
+    /* Custom Areas */
+    --app-bg: 0 0% 100%;
     --sidebar-bg: 0 0% 100%;
-    --preview-bg: 240 5% 96%;
+    --preview-bg: 0 0% 98%;
     --filmstrip-bg: 0 0% 100%;
-    
-    --radius: 0.875rem;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    /* Invert for Dark Mode - "Night Editorial" */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
     
-    --card: 240 10% 6%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
     
-    --popover: 240 10% 6%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
     
-    --primary: 263 70% 58%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
     
-    --secondary: 187 85% 43%;
+    --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 100%;
     
-    --muted: 240 10% 12%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
     
-    --accent: 263 50% 30%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 0 0% 90%;
+    --accent-foreground: 0 0% 0%;
     
-    --destructive: 0 62.8% 50%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 240 10% 15%;
-    --input: 240 10% 15%;
-    --ring: 263 70% 58%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 100%;
     
-    --divider: 240 10% 15%;
+    --divider: 0 0% 20%;
     
-    --app-bg: 240 10% 3.9%;
-    --sidebar-bg: 240 10% 6%;
-    --preview-bg: 240 10% 3%;
-    --filmstrip-bg: 240 10% 5%;
+    --app-bg: 0 0% 0%;
+    --sidebar-bg: 0 0% 3%;
+    --preview-bg: 0 0% 5%;
+    --filmstrip-bg: 0 0% 3%;
   }
 }
 
@@ -99,189 +100,114 @@
   }
   
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased font-sans;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight font-medium;
+  }
   
-  /* 选中文字颜色 */
+  /* Selection Color */
   ::selection {
-    @apply bg-primary/20 text-foreground;
+    @apply bg-black text-white;
   }
 }
 
 @layer components {
-  /* ===== Apple Liquid Glass 核心面板 ===== */
+  /* Vogue Style Cards - Sharp, Minimal, Bordered */
   .glass-panel {
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(32px) saturate(200%) brightness(1.02);
-    -webkit-backdrop-filter: blur(32px) saturate(200%) brightness(1.02);
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    border-radius: var(--radius);
-    box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.9) inset,
-      0 1px 0 0 rgba(255, 255, 255, 1) inset,
-      0 -0.5px 0 0 rgba(0, 0, 0, 0.06) inset,
-      0 8px 32px rgba(0, 0, 0, 0.06),
-      0 2px 8px rgba(0, 0, 0, 0.04),
-      0 1px 2px rgba(0, 0, 0, 0.03);
+    @apply bg-background border border-black/10 shadow-none rounded-none;
   }
   
   .dark .glass-panel {
-    background: rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(32px) saturate(180%);
-    -webkit-backdrop-filter: blur(32px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.08) inset,
-      0 1px 0 0 rgba(255, 255, 255, 0.12) inset,
-      0 8px 32px rgba(0, 0, 0, 0.4),
-      0 2px 8px rgba(0, 0, 0, 0.2);
+    @apply bg-background border-white/20;
   }
 
-  /* 深度玻璃 - 用于浮层、卡片等 */
+  /* Deep Glass -> Solid Editorial Card */
   .glass-deep {
-    background: rgba(255, 255, 255, 0.6);
-    backdrop-filter: blur(48px) saturate(220%) brightness(1.04);
-    -webkit-backdrop-filter: blur(48px) saturate(220%) brightness(1.04);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    border-radius: var(--radius);
-    box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 1) inset,
-      0 1.5px 0 0 rgba(255, 255, 255, 1) inset,
-      0 -0.5px 0 0 rgba(0, 0, 0, 0.05) inset,
-      0 16px 48px rgba(0, 0, 0, 0.08),
-      0 4px 16px rgba(0, 0, 0, 0.05),
-      0 1px 4px rgba(0, 0, 0, 0.04);
+    @apply bg-background border border-black shadow-lg rounded-none;
+    box-shadow: 10px 10px 0px 0px rgba(0,0,0,1);
   }
 
-  /* 轻薄玻璃 - 用于小标签、tooltip */
+  /* Thin Glass -> Light Outline */
   .glass-thin {
-    background: rgba(255, 255, 255, 0.82);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    border-radius: calc(var(--radius) - 4px);
-    box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.9) inset,
-      0 2px 8px rgba(0, 0, 0, 0.05),
-      0 1px 2px rgba(0, 0, 0, 0.04);
+    @apply bg-background/80 border border-black/20 backdrop-blur-sm rounded-none;
   }
 
-  /* 毛玻璃卡片（兼容旧版） */
   .glass-card {
-    @apply glass-panel;
+    @apply glass-panel transition-transform duration-300;
   }
   
-  /* 发光按钮 */
+  .glass-card:hover {
+    @apply -translate-y-1;
+    box-shadow: 5px 5px 0px 0px rgba(0,0,0,0.1);
+  }
+  
+  /* Buttons - Sharp, Bold */
   .btn-glow {
-    @apply relative overflow-hidden;
-    box-shadow: 0 4px 14px hsla(250, 80%, 60%, 0.3), 0 1px 4px hsla(250, 80%, 60%, 0.2);
-    transition: box-shadow 0.2s ease, transform 0.15s ease;
+    @apply relative overflow-hidden bg-black text-white font-medium uppercase tracking-widest text-xs px-6 py-3 border border-black rounded-none transition-all duration-300;
   }
   
   .btn-glow:hover {
-    box-shadow: 0 6px 20px hsla(250, 80%, 60%, 0.4), 0 2px 8px hsla(250, 80%, 60%, 0.25);
-    transform: translateY(-0.5px);
+    @apply bg-white text-black;
+    box-shadow: 4px 4px 0px 0px rgba(0,0,0,1);
+    transform: translate(-2px, -2px);
   }
 
   .btn-glow:active {
-    transform: translateY(0);
-    box-shadow: 0 3px 10px hsla(250, 80%, 60%, 0.3);
+    transform: translate(0, 0);
+    box-shadow: none;
   }
   
-  /* 渐变文字 */
+  /* Gradient Text -> Solid High Contrast */
   .text-gradient {
-    @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(250, 80%, 60%) 0%, hsl(195, 85%, 50%) 100%);
+    @apply text-foreground font-serif italic;
   }
   
-  /* 渐变边框 */
+  /* Gradient Border -> Solid Border */
   .border-gradient {
-    @apply relative;
-    background: linear-gradient(var(--background), var(--background)) padding-box,
-                linear-gradient(135deg, hsl(250, 80%, 60%), hsl(195, 85%, 50%)) border-box;
-    border: 1px solid transparent;
+    @apply border border-black rounded-none;
   }
   
-  /* 上传区域样式 */
+  /* Upload Zone - Minimalist */
   .upload-zone {
-    @apply relative rounded-2xl border-2 border-dashed border-divider;
-    @apply bg-muted/30 backdrop-blur-sm;
-    @apply transition-all duration-300;
+    @apply relative border border-dashed border-black/30 bg-muted/10 transition-all duration-300 rounded-none;
   }
   
   .upload-zone:hover {
-    @apply border-primary/40 bg-primary/5;
+    @apply border-black bg-muted/20;
   }
   
   .upload-zone.dragging {
-    @apply border-primary bg-primary/10;
-    box-shadow: 0 0 32px hsla(250, 80%, 60%, 0.18);
+    @apply border-black bg-black/5;
   }
   
-  /* 特殊背景 */
-  .bg-app {
-    background-color: hsl(var(--app-bg));
-  }
-  
-  .bg-sidebar {
-    background-color: hsl(var(--sidebar-bg));
-  }
-  
-  .bg-preview {
-    background-color: hsl(var(--preview-bg));
-  }
-  
-  .bg-filmstrip {
-    background-color: hsl(var(--filmstrip-bg));
-  }
-  
-  .border-divider {
-    border-color: hsl(var(--divider));
-  }
-
-  /* 时间线 feed 背景 */
-  .bg-feed {
-    background-color: hsl(240 6% 95%);
-    background-image: 
-      radial-gradient(ellipse 80% 50% at 50% -10%, hsla(250, 80%, 60%, 0.06) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 100%, hsla(195, 85%, 50%, 0.04) 0%, transparent 50%);
-  }
-
-  /* 记录卡片生成触发按钮 */
+  /* Generate Button */
   .btn-generate-suite {
-    background: linear-gradient(135deg, hsl(250, 80%, 60%), hsl(220, 90%, 60%));
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.4) inset,
-      0 4px 16px hsla(250, 80%, 60%, 0.35),
-      0 2px 6px hsla(250, 80%, 60%, 0.2);
-    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    @apply bg-black text-white border border-black rounded-none uppercase tracking-widest text-sm font-serif px-8 py-4 transition-all duration-300;
   }
 
   .btn-generate-suite:hover {
-    box-shadow:
-      0 0 0 0.5px rgba(255, 255, 255, 0.5) inset,
-      0 6px 24px hsla(250, 80%, 60%, 0.5),
-      0 3px 10px hsla(250, 80%, 60%, 0.3);
-    transform: translateY(-1px) scale(1.02);
+    @apply bg-white text-black;
+    box-shadow: 6px 6px 0px 0px rgba(0,0,0,1);
+    transform: translate(-3px, -3px);
   }
 
   .btn-generate-suite:active {
-    transform: translateY(0) scale(0.99);
+    transform: translate(0, 0);
+    box-shadow: none;
   }
 }
 
 @layer utilities {
-  /* 自定义滚动条 - 精致风格 */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: #000 transparent;
   }
   
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 2px;
   }
   
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -289,58 +215,26 @@
   }
   
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
-    border-radius: 100px;
+    background: #000;
   }
   
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+  /* Magazine Layout Utilities */
+  .magazine-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1rem;
   }
   
-  /* 动画 */
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  .drop-cap:first-letter {
+    float: left;
+    font-size: 4rem;
+    line-height: 0.8;
+    font-family: var(--font-heading);
+    margin-right: 0.5rem;
   }
   
-  .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  
-  .animate-shimmer {
-    animation: shimmer 2s linear infinite;
-    background-size: 200% 100%;
-  }
-  
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-  
-  @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
-  
-  /* 背景网格 */
-  .bg-grid {
-    background-image: 
-      linear-gradient(hsl(var(--foreground) / 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(var(--foreground) / 0.02) 1px, transparent 1px);
-    background-size: 64px 64px;
-  }
-  
-  /* 背景光晕 */
-  .bg-glow {
-    background-image: radial-gradient(ellipse at 50% 0%, hsla(250, 80%, 60%, 0.08) 0%, transparent 70%);
-  }
-  
-  /* 隐藏滚动条 */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  .text-justify-last-center {
+    text-align: justify;
+    text-align-last: center;
   }
 }
