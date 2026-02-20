@@ -17,6 +17,33 @@ import type { GenerationRecord, GenerationMode } from '@/types/generation-record
 // 调试模式：生成 3 张；正式上线改为 5
 const MULTI_POSE_GENERATE_COUNT = 3
 
+/**
+ * 将 File 转换为小尺寸 base64 缩略图（用于持久化存储，避免 blob URL 刷新后失效）
+ */
+async function fileToThumbnail(file: File, maxSize = 300): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const blobUrl = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl)
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1)
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(img.width * scale)
+      canvas.height = Math.round(img.height * scale)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { resolve(''); return }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/jpeg', 0.75))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl)
+      console.warn('[Workbench] fileToThumbnail 失败，降级为空字符串')
+      resolve('')
+    }
+    img.src = blobUrl
+  })
+}
+
 export default function HomePage() {
   const { user, profile } = useUser()
   const supabase = createClient()
@@ -26,33 +53,48 @@ export default function HomePage() {
   const [previewUrl, setPreviewUrl] = useState<string>('')
   const [selectedScene, setSelectedScene] = useState('white-bg')
   const [showAuthDialog, setShowAuthDialog] = useState(false)
-  const [records, setRecords] = useState<GenerationRecord[]>(() => {
-    if (typeof window === 'undefined') return []
-    try {
-      const saved = sessionStorage.getItem('proshot_records')
-      if (!saved) return []
-      const parsed = JSON.parse(saved) as GenerationRecord[]
-      // 页面重新加载后不存在进行中的请求，清除上次未完成的 generating 状态
-      // 防止僵尸 loading 卡住 + 防止 Next.js RSC 刷新导致 in-flight 结果丢失后记录永远转圈
-      return parsed.map((r) => ({
-        ...r,
-        timestamp: new Date(r.timestamp),
-        generating: false,
-        generatingMultiPose: false,
-      }))
-    } catch {
-      return []
-    }
-  })
 
-  // 每次 records 变化时同步到 sessionStorage
+  // Bug 修复：不在 useState 初始化函数中读取 sessionStorage。
+  // Next.js SSR 时服务端无 window，初始值为 []；hydration 时 React 复用服务端状态，
+  // 导致 useEffect 立即将 [] 写回 sessionStorage，清空历史记录。
+  // 正确做法：初始值始终为 []，在 useEffect 中完成 hydration 后才读取 sessionStorage。
+  const [records, setRecords] = useState<GenerationRecord[]>([])
+  const [recordsHydrated, setRecordsHydrated] = useState(false)
+
+  // 客户端 hydration 完成后，从 sessionStorage 恢复记录（仅执行一次）
   useEffect(() => {
     try {
-      sessionStorage.setItem('proshot_records', JSON.stringify(records))
-    } catch {
-      // sessionStorage 不可用时静默忽略
+      const saved = sessionStorage.getItem('proshot_records')
+      if (saved) {
+        const parsed = JSON.parse(saved) as GenerationRecord[]
+        const restored = parsed.map((r) => ({
+          ...r,
+          timestamp: new Date(r.timestamp),
+          // 刷新后不存在 in-flight 请求，清除僵尸 loading 状态
+          generating: false,
+          generatingMultiPose: false,
+        }))
+        setRecords(restored)
+        console.log(`[Records] 从 sessionStorage 恢复 ${restored.length} 条记录`)
+      } else {
+        console.log('[Records] sessionStorage 中无历史记录')
+      }
+    } catch (e) {
+      console.warn('[Records] sessionStorage 读取失败:', e)
     }
-  }, [records])
+    setRecordsHydrated(true)
+  }, [])
+
+  // 每次 records 变化时同步到 sessionStorage（仅在 hydration 完成后才写入，防止覆盖历史）
+  useEffect(() => {
+    if (!recordsHydrated) return
+    try {
+      sessionStorage.setItem('proshot_records', JSON.stringify(records))
+      console.log(`[Records] 已同步 ${records.length} 条记录到 sessionStorage`)
+    } catch (e) {
+      console.warn('[Records] sessionStorage 写入失败:', e)
+    }
+  }, [records, recordsHydrated])
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
@@ -79,6 +121,13 @@ export default function HomePage() {
     const scene = SCENE_PRESETS.find((s) => s.id === selectedScene)!
     const recordId = `record-${Date.now()}`
 
+    // Bug 修复：referenceImageUrl 使用 base64 缩略图而非 blob URL。
+    // blob URL（blob:http://...）仅在当前页面生命周期有效，刷新后失效导致图片裂开。
+    // base64 data URL 可持久化存储在 sessionStorage，刷新后仍可正常显示。
+    console.log('[Workbench] 生成参考图缩略图（base64）...')
+    const thumbnailUrl = await fileToThumbnail(selectedFile)
+    console.log(`[Workbench] 缩略图生成完成，大小约 ${Math.round(thumbnailUrl.length / 1024)}KB`)
+
     // 立即新增一条"生成中"记录，出现在时间线顶部
     const newRecord: GenerationRecord = {
       id: recordId,
@@ -87,7 +136,7 @@ export default function HomePage() {
       sceneId: selectedScene,
       sceneName: scene.name,
       sceneIcon: scene.icon,
-      referenceImageUrl: previewUrl,
+      referenceImageUrl: thumbnailUrl,  // base64，持久化安全
       referenceFileName: selectedFile.name,
       mainImage: null,
       generating: true,
@@ -140,6 +189,16 @@ export default function HomePage() {
         const { data } = supabase.storage.from('originals').getPublicUrl(fileName)
         publicUrl = data.publicUrl
         console.log('[Workbench] 上传成功，Public URL:', publicUrl)
+
+        // 上传完成后，将 referenceImageUrl 升级为永久 Supabase URL（更高清，不受 sessionStorage 大小限制）
+        setRecords((prev) => {
+          const updated = prev.map((r) =>
+            r.id === recordId ? { ...r, referenceImageUrl: publicUrl } : r
+          )
+          try { sessionStorage.setItem('proshot_records', JSON.stringify(updated)) } catch {}
+          return updated
+        })
+        console.log('[Workbench] referenceImageUrl 已升级为永久 URL')
       }
 
       const response = await fetch('/api/generate/main', {
