@@ -32,7 +32,14 @@ export default function HomePage() {
       const saved = sessionStorage.getItem('proshot_records')
       if (!saved) return []
       const parsed = JSON.parse(saved) as GenerationRecord[]
-      return parsed.map((r) => ({ ...r, timestamp: new Date(r.timestamp) }))
+      // 页面重新加载后不存在进行中的请求，清除上次未完成的 generating 状态
+      // 防止僵尸 loading 卡住 + 防止 Next.js RSC 刷新导致 in-flight 结果丢失后记录永远转圈
+      return parsed.map((r) => ({
+        ...r,
+        timestamp: new Date(r.timestamp),
+        generating: false,
+        generatingMultiPose: false,
+      }))
     } catch {
       return []
     }
@@ -149,11 +156,17 @@ export default function HomePage() {
       console.log('[Workbench] API 响应数据:', result)
 
       if (result.success) {
-        setRecords((prev) =>
-          prev.map((r) =>
+        setRecords((prev) => {
+          const updated = prev.map((r) =>
             r.id === recordId ? { ...r, mainImage: result.imageUrl, generating: false } : r
           )
-        )
+          // 立即同步写入 sessionStorage，防止 Next.js RSC 路由刷新在 React 渲染前发生，
+          // 导致 state 更新被丢弃、结果图片无法显示
+          try {
+            sessionStorage.setItem('proshot_records', JSON.stringify(updated))
+          } catch {}
+          return updated
+        })
         console.log('[Workbench] 生成成功！')
       } else {
         setRecords((prev) =>
