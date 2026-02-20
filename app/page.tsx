@@ -160,37 +160,54 @@ export default function HomePage() {
         console.log('[Workbench] Mock 模式：跳过上传，使用虚拟 URL')
         publicUrl = 'https://mock-url.com/original.jpg'
       } else {
-        console.log('[Workbench] 正常模式：正在上传图片到 Supabase...')
+        // 关键修复：移除 supabase.auth.getSession() 调用。
+        // 在 onAuthStateChange SIGNED_IN 处理期间调用 getSession() 可能触发 Supabase 内部锁，
+        // 导致 await 永远不 resolve，上传流程卡死。直接使用 hook 提供的 user 对象即可。
+        if (!user) {
+          throw new Error('用户未登录，无法上传图片')
+        }
 
-        const fileExt = selectedFile.name.split('.').pop()
-        const fileName = `${user?.id || 'guest'}/${Date.now()}.${fileExt}`
+        const fileExt = selectedFile.name.split('.').pop() || 'jpg'
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`
 
-        const { data: sessionData } = await supabase.auth.getSession()
-        console.log(
-          '[Workbench] 当前 session:',
-          sessionData?.session ? `已登录 uid=${sessionData.session.user.id}` : '未登录'
-        )
+        console.log('[Workbench] 准备上传:', {
+          bucket: 'originals',
+          fileName,
+          fileSize: `${(selectedFile.size / 1024).toFixed(1)}KB`,
+          fileType: selectedFile.type,
+          userId: user.id,
+        })
 
         const uploadPromise = supabase.storage
           .from('originals')
           .upload(fileName, selectedFile, { contentType: selectedFile.type })
 
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('上传超时（30s），请检查网络连接')), 30000)
+          setTimeout(() => reject(new Error('上传超时（30s），请检查网络连接或 Supabase Storage 策略')), 30000)
         )
 
-        const { error: uploadError } = await Promise.race([uploadPromise, timeoutPromise])
+        console.log('[Workbench] 上传请求已发出，等待响应...')
+        const uploadResult = await Promise.race([uploadPromise, timeoutPromise])
+        const { error: uploadError, data: uploadData } = uploadResult
 
         if (uploadError) {
-          console.error('[Workbench] 上传失败:', uploadError)
+          console.error('[Workbench] 上传失败:', {
+            message: uploadError.message,
+            // @ts-ignore
+            statusCode: uploadError.statusCode,
+            // @ts-ignore
+            error: uploadError.error,
+          })
           throw uploadError
         }
 
+        console.log('[Workbench] 上传成功，Storage path:', uploadData?.path)
+
         const { data } = supabase.storage.from('originals').getPublicUrl(fileName)
         publicUrl = data.publicUrl
-        console.log('[Workbench] 上传成功，Public URL:', publicUrl)
+        console.log('[Workbench] Public URL:', publicUrl)
 
-        // 上传完成后，将 referenceImageUrl 升级为永久 Supabase URL（更高清，不受 sessionStorage 大小限制）
+        // 上传完成后，将 referenceImageUrl 升级为永久 Supabase URL
         setRecords((prev) => {
           const updated = prev.map((r) =>
             r.id === recordId ? { ...r, referenceImageUrl: publicUrl } : r
@@ -201,6 +218,7 @@ export default function HomePage() {
         console.log('[Workbench] referenceImageUrl 已升级为永久 URL')
       }
 
+      console.log('[Workbench] 调用生成 API...', { originalImageUrl: publicUrl, sceneType: selectedScene, mode })
       const response = await fetch('/api/generate/main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -210,6 +228,13 @@ export default function HomePage() {
           mode,
         }),
       })
+
+      console.log('[Workbench] API 响应状态:', response.status, response.statusText)
+      if (!response.ok) {
+        const errText = await response.text()
+        console.error('[Workbench] API 返回错误:', errText)
+        throw new Error(`API 请求失败 (${response.status}): ${errText}`)
+      }
 
       const result = await response.json()
       console.log('[Workbench] API 响应数据:', result)

@@ -5,6 +5,35 @@ import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { UserProfile } from '@/types/user'
 
+// ─── Profile 本地缓存（stale-while-revalidate）────────────────────────────────
+// 解决 Supabase profile 接口响应慢时积分区闪烁/空白的问题：
+// 登录后将 profile 写入 localStorage；下次加载时立即从缓存恢复，
+// 再后台刷新——有变化时才触发重渲染，用户感知不到延迟。
+const PROFILE_CACHE_PREFIX = 'proshot_profile_'
+
+function readCachedProfile(userId: string): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(PROFILE_CACHE_PREFIX + userId)
+    if (!raw) return null
+    return JSON.parse(raw) as UserProfile
+  } catch {
+    return null
+  }
+}
+
+function writeCachedProfile(profile: UserProfile): void {
+  try {
+    localStorage.setItem(PROFILE_CACHE_PREFIX + profile.id, JSON.stringify(profile))
+  } catch {}
+}
+
+function clearCachedProfile(userId: string): void {
+  try {
+    localStorage.removeItem(PROFILE_CACHE_PREFIX + userId)
+  } catch {}
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function fetchProfile(
   supabase: ReturnType<typeof createClient>,
   userId: string
@@ -22,7 +51,6 @@ async function fetchProfile(
 
   if (!data) {
     console.warn('[useUser] fetchProfile 未找到 profile，尝试自动创建...')
-    // Profile 不存在时自动创建（兜底，防止触发器未执行）
     const { data: created, error: createError } = await supabase
       .from('profiles')
       .insert({ id: userId, credits: 5, is_subscriber: false } as any)
@@ -43,15 +71,13 @@ async function fetchProfile(
     }
   }
 
-  const profile = {
+  return {
     id: (data as any).id,
     credits: (data as any).credits,
     isSubscriber: (data as any).is_subscriber,
     createdAt: (data as any).created_at,
     updatedAt: (data as any).updated_at,
   }
-  console.log(`[useUser] fetchProfile 成功: credits=${profile.credits}`)
-  return profile
 }
 
 export function useUser() {
@@ -59,18 +85,14 @@ export function useUser() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // 用 ref 持有 supabase 实例，避免 effect 中闭包捕获过时实例
   const supabaseRef = useRef(createClient())
   const supabase = supabaseRef.current
 
   useEffect(() => {
     let mounted = true
 
-    // 仅通过 onAuthStateChange 管理状态，避免与 getUser() 并发竞态：
-    // - INITIAL_SESSION 在订阅注册时立即触发，提供当前 session（来自 cookie/localStorage）
-    // - middleware 已在服务端调用 getUser() 刷新了 cookie，所以 INITIAL_SESSION 是最新状态
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (!mounted) return
 
         console.log(`[useUser] Auth 事件: ${event}`, {
@@ -83,26 +105,46 @@ export function useUser() {
         setUser(currentUser)
 
         if (currentUser) {
-          try {
-            const p = await fetchProfile(supabase, currentUser.id)
-            if (mounted) setProfile(p)
-          } catch (err) {
-            console.error('[useUser] profile 获取异常:', err)
-            if (mounted) setProfile(null)
+          // Stale-while-revalidate：先从缓存立即恢复，消除接口慢时的空白积分
+          const cached = readCachedProfile(currentUser.id)
+          if (cached) {
+            setProfile(cached)
+            console.log(`[useUser] 从缓存恢复 profile: credits=${cached.credits}`)
           }
-        } else {
-          setProfile(null)
-        }
 
-        // 必须在所有异步操作后才关闭 loading，避免 UI 闪烁
-        if (mounted) {
+          // loading 在有无缓存时都立即关闭，Header 不等接口
           setLoading(false)
-          console.log(`[useUser] loading 已关闭, user=${currentUser?.id ?? 'null'}`)
+          console.log(`[useUser] loading 已关闭, user=${currentUser.id}`)
+
+          // 后台刷新，有变化时才更新 UI
+          console.log('[useUser] 后台刷新 profile...')
+          fetchProfile(supabase, currentUser.id)
+            .then((fresh) => {
+              if (!mounted || !fresh) return
+              // 只在数据变化时更新，避免无意义重渲染
+              if (!cached || fresh.credits !== cached.credits || fresh.isSubscriber !== cached.isSubscriber) {
+                setProfile(fresh)
+                console.log(`[useUser] profile 已刷新: credits=${fresh.credits}（缓存=${cached?.credits ?? 'N/A'}）`)
+              } else {
+                console.log(`[useUser] profile 无变化，跳过更新: credits=${fresh.credits}`)
+              }
+              writeCachedProfile(fresh)
+            })
+            .catch((err) => {
+              console.error('[useUser] profile 后台刷新失败:', err)
+              // 刷新失败时保留缓存数据，不清空 UI
+            })
+        } else {
+          // 登出时清理缓存
+          if (user?.id) clearCachedProfile(user.id)
+          setProfile(null)
+          setLoading(false)
+          console.log('[useUser] loading 已关闭, user=null')
         }
       }
     )
 
-    // 页面从后台恢复时主动刷新 session，避免长时间空闲后 token 过期导致状态不同步
+    // 页面从后台恢复时主动刷新 session
     const handleVisibilityChange = async () => {
       if (!document.hidden) {
         console.log('[useUser] 页面变为可见，检查 session...')

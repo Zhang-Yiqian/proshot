@@ -23,13 +23,14 @@ description: 智能分析代码变更并生成符合 Conventional Commits 规范
 - 🔧 **chore**: 构建过程或辅助工具的变动 (Build process, auxiliary tools)
 
 ## Rules
-- **Description** 必须简练、使用中文（除非我特别要求英文）。
+- **Description** 必须简练、使用中文（除非我特别要求英文）
 - **Scope** (可选): 如果变更集中在某个模块，可以在 Type 后加括号，如 `feat(user): ...`。
 - 保持 Atomic（原子性）：如果变更过于杂乱，请建议我分次提交，或者总结最核心的变更。
 - 如果我特殊制定了变更描述，请优先按照我的描述来提交
 
 # Output
-请直接提供唯一一个可以在终端运行的代码块，格式如下：
-
+1、请直接提供唯一一个可以在终端运行的代码块，格式如下：
 ```bash
 git add . && git commit -m "..." && git push
+
+2、请提供一个可以推送到线上代码的vercel --prod 代码块，我自己决定是否推送线上
