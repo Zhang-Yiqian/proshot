@@ -5,16 +5,14 @@ import { usePathname } from 'next/navigation'
 import { Sparkles, LogOut, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUser } from '@/hooks/use-user'
-import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 export function Header() {
   const pathname = usePathname()
   const { user, profile, loading } = useUser()
-  const supabase = createClient()
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    await fetch('/auth/signout', { method: 'POST' })
     window.location.href = '/'
   }
 

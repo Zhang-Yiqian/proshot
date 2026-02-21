@@ -87,6 +87,8 @@ export function useUser() {
 
   const supabaseRef = useRef(createClient())
   const supabase = supabaseRef.current
+  // 用 ref 追踪当前 userId，避免 useEffect 闭包捕获到初始 null 值
+  const userIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -103,6 +105,7 @@ export function useUser() {
 
         const currentUser = session?.user ?? null
         setUser(currentUser)
+        userIdRef.current = currentUser?.id ?? null
 
         if (currentUser) {
           // Stale-while-revalidate：先从缓存立即恢复，消除接口慢时的空白积分
@@ -135,8 +138,9 @@ export function useUser() {
               // 刷新失败时保留缓存数据，不清空 UI
             })
         } else {
-          // 登出时清理缓存
-          if (user?.id) clearCachedProfile(user.id)
+          // 登出时清理缓存（用 ref 而非 state，避免陈旧闭包问题）
+          if (userIdRef.current) clearCachedProfile(userIdRef.current)
+          userIdRef.current = null
           setProfile(null)
           setLoading(false)
           console.log('[useUser] loading 已关闭, user=null')

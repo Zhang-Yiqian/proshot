@@ -254,16 +254,16 @@
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow:
       0 0 0 0.5px rgba(255, 255, 255, 0.4) inset,
-      0 4px 16px hsla(250, 80%, 60%, 0.35),
-      0 2px 6px hsla(250, 80%, 60%, 0.2);
+      0 2px 8px hsla(250, 80%, 60%, 0.18),
+      0 1px 3px hsla(250, 80%, 60%, 0.12);
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .btn-generate-suite:hover {
     box-shadow:
       0 0 0 0.5px rgba(255, 255, 255, 0.5) inset,
-      0 6px 24px hsla(250, 80%, 60%, 0.5),
-      0 3px 10px hsla(250, 80%, 60%, 0.3);
+      0 4px 16px hsla(250, 80%, 60%, 0.28),
+      0 2px 6px hsla(250, 80%, 60%, 0.16);
     transform: translateY(-1px) scale(1.02);
   }
 

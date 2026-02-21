@@ -45,7 +45,7 @@ function ImageCard({
       className={cn(
         'relative flex-none w-[165px] h-[220px] rounded-2xl overflow-hidden transition-all duration-300',
         src
-          ? 'border border-white/60 shadow-lg shadow-black/10'
+          ? 'border border-black/6 shadow-[0_2px_8px_rgba(0,0,0,0.07),0_1px_2px_rgba(0,0,0,0.04)]'
           : isEmpty
           ? 'border-2 border-dashed border-divider/30 bg-muted/10'
           : 'border border-divider/40 bg-muted/20'
@@ -180,7 +180,7 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
 
       {/* ===== 图片横向滚动区 ===== */}
       <div className="relative">
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pt-1 px-1 -mx-1">
           {/* 主图 */}
           <ImageCard
             src={record.mainImage ?? undefined}
