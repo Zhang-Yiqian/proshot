@@ -1,18 +1,45 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Sparkles, Loader2, X, Gift, ImageIcon, Layers } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Sparkles, X, Gift, ImageIcon, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
 import { AuthDialog } from '@/components/common/auth-dialog'
 import { GenerationRecordCard } from '@/components/workbench/generation-record-card'
 import { useUser } from '@/hooks/use-user'
+import { useCredits } from '@/hooks/use-credits'
 import { createClient } from '@/lib/supabase/client'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
 import { SCENE_PRESETS } from '@/config/presets'
 import { MODEL_CONFIG } from '@/config/models'
 import type { GenerationRecord, GenerationMode } from '@/types/generation-record'
+import type { GenerationResult } from '@/types/generation'
+
+/**
+ * 将数据库的 GenerationResult 转换为 UI 展示的 GenerationRecord。
+ * style_preset 格式为 "${mode}-${sceneId}"，例如 "clothing-white-bg"
+ */
+function dbRecordToUIRecord(gen: GenerationResult): GenerationRecord {
+  const firstDash = gen.stylePreset.indexOf('-')
+  const mode = (firstDash > 0 ? gen.stylePreset.slice(0, firstDash) : 'clothing') as GenerationMode
+  const sceneId = firstDash > 0 ? gen.stylePreset.slice(firstDash + 1) : gen.stylePreset
+  const scene = SCENE_PRESETS.find((s) => s.id === sceneId)
+  return {
+    id: gen.id,
+    timestamp: new Date(gen.createdAt),
+    mode,
+    sceneId,
+    sceneName: scene?.name ?? sceneId,
+    sceneIcon: scene?.icon ?? '📷',
+    referenceImageUrl: gen.originalImageUrl,
+    referenceFileName: 'uploaded-image.jpg',
+    mainImage: gen.generatedImageUrl ?? null,
+    generating: false,
+    multiPoseImages: [],
+    generatingMultiPose: false,
+  }
+}
 
 // 调试模式：生成 3 张；正式上线改为 5
 const MULTI_POSE_GENERATE_COUNT = 3
@@ -45,7 +72,8 @@ async function fileToThumbnail(file: File, maxSize = 300): Promise<string> {
 }
 
 export default function HomePage() {
-  const { user, profile } = useUser()
+  const { user, profile, loading: authLoading, refreshProfile } = useUser()
+  const { deductCredit, addCredit } = useCredits()
   const supabase = createClient()
 
   const mode: GenerationMode = 'clothing'
@@ -54,47 +82,61 @@ export default function HomePage() {
   const [selectedScene, setSelectedScene] = useState('white-bg')
   const [showAuthDialog, setShowAuthDialog] = useState(false)
 
-  // Bug 修复：不在 useState 初始化函数中读取 sessionStorage。
-  // Next.js SSR 时服务端无 window，初始值为 []；hydration 时 React 复用服务端状态，
-  // 导致 useEffect 立即将 [] 写回 sessionStorage，清空历史记录。
-  // 正确做法：初始值始终为 []，在 useEffect 中完成 hydration 后才读取 sessionStorage。
   const [records, setRecords] = useState<GenerationRecord[]>([])
-  const [recordsHydrated, setRecordsHydrated] = useState(false)
+  // 追踪上一次的 userId，用于判断登录/登出事件
+  const prevUserIdRef = useRef<string | null | undefined>(undefined)
 
-  // 客户端 hydration 完成后，从 sessionStorage 恢复记录（仅执行一次）
+  // 监听登录/登出状态变化，同步生成记录
   useEffect(() => {
+    // authLoading 期间不处理，等待确定的用户状态
+    if (authLoading) return
+
+    const currentUserId = user?.id ?? null
+    const prevUserId = prevUserIdRef.current
+
+    // undefined 代表初始化尚未发生，不触发（避免和 null 混淆）
+    if (prevUserId === undefined) {
+      prevUserIdRef.current = currentUserId
+      // 初始化时若已登录，立即从 DB 加载记录
+      if (currentUserId) {
+        loadRecordsFromDB()
+      }
+      return
+    }
+
+    if (currentUserId === prevUserId) return
+    prevUserIdRef.current = currentUserId
+
+    if (currentUserId) {
+      // 用户登录：从数据库加载历史记录
+      loadRecordsFromDB()
+    } else {
+      // 用户登出：清空记录
+      console.log('[Records] 用户已登出，清空生成记录')
+      setRecords([])
+    }
+  }, [user, authLoading])
+
+  async function loadRecordsFromDB() {
     try {
-      const saved = sessionStorage.getItem('proshot_records')
-      if (saved) {
-        const parsed = JSON.parse(saved) as GenerationRecord[]
-        const restored = parsed.map((r) => ({
-          ...r,
-          timestamp: new Date(r.timestamp),
-          // 刷新后不存在 in-flight 请求，清除僵尸 loading 状态
-          generating: false,
-          generatingMultiPose: false,
-        }))
-        setRecords(restored)
-        console.log(`[Records] 从 sessionStorage 恢复 ${restored.length} 条记录`)
-      } else {
-        console.log('[Records] sessionStorage 中无历史记录')
+      console.log('[Records] 从数据库加载历史记录...')
+      const res = await fetch('/api/generations')
+      if (!res.ok) {
+        console.warn('[Records] 加载失败，状态码:', res.status)
+        return
+      }
+      const data = await res.json()
+      if (data.success && Array.isArray(data.generations)) {
+        const uiRecords = (data.generations as GenerationResult[])
+          .filter((g) => g.status === 'completed' || g.status === 'pending')
+          .map(dbRecordToUIRecord)
+        setRecords(uiRecords)
+        console.log(`[Records] 已从数据库加载 ${uiRecords.length} 条记录`)
       }
     } catch (e) {
-      console.warn('[Records] sessionStorage 读取失败:', e)
+      console.warn('[Records] 从数据库加载记录失败:', e)
     }
-    setRecordsHydrated(true)
-  }, [])
-
-  // 每次 records 变化时同步到 sessionStorage（仅在 hydration 完成后才写入，防止覆盖历史）
-  useEffect(() => {
-    if (!recordsHydrated) return
-    try {
-      sessionStorage.setItem('proshot_records', JSON.stringify(records))
-      console.log(`[Records] 已同步 ${records.length} 条记录到 sessionStorage`)
-    } catch (e) {
-      console.warn('[Records] sessionStorage 写入失败:', e)
-    }
-  }, [records, recordsHydrated])
+  }
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
@@ -111,9 +153,20 @@ export default function HomePage() {
   }
 
   const handleGenerate = async () => {
-    if (!user && !MODEL_CONFIG.mockMode && !MODEL_CONFIG.mockMainImageMode) {
-      setShowAuthDialog(true)
-      return
+    // 1. 始终先检查登录态（mock 模式除外，用于本地开发）
+    if (!MODEL_CONFIG.mockMode && !MODEL_CONFIG.mockMainImageMode) {
+      if (!user) {
+        setShowAuthDialog(true)
+        return
+      }
+
+      // 2. 检查积分余额
+      const cost = siteConfig.credits.mainImageCost
+      const currentCredits = profile?.credits ?? 0
+      if (currentCredits < cost) {
+        alert(`积分不足（当前 ${currentCredits} 积分，生成主图需要 ${cost} 积分），请购买积分后再试`)
+        return
+      }
     }
 
     if (!selectedFile) return
@@ -152,6 +205,20 @@ export default function HomePage() {
       mockMode: MODEL_CONFIG.mockMode,
       mockMainImageMode: MODEL_CONFIG.mockMainImageMode,
     })
+
+    // 3. 虚扣除积分（立即从后端扣除，生成失败后返还）
+    const cost = siteConfig.credits.mainImageCost
+    let creditDeducted = false
+    if (!MODEL_CONFIG.mockMode && !MODEL_CONFIG.mockMainImageMode && user) {
+      const deductResult = await deductCredit(cost)
+      if (!deductResult.success) {
+        setRecords((prev) => prev.map((r) => (r.id === recordId ? { ...r, generating: false } : r)))
+        alert(deductResult.error || '积分扣除失败，请重试')
+        return
+      }
+      creditDeducted = true
+      console.log(`[Workbench] 已扣除 ${cost} 积分，剩余 ${deductResult.newBalance} 积分`)
+    }
 
     try {
       let publicUrl = ''
@@ -208,13 +275,9 @@ export default function HomePage() {
         console.log('[Workbench] Public URL:', publicUrl)
 
         // 上传完成后，将 referenceImageUrl 升级为永久 Supabase URL
-        setRecords((prev) => {
-          const updated = prev.map((r) =>
-            r.id === recordId ? { ...r, referenceImageUrl: publicUrl } : r
-          )
-          try { sessionStorage.setItem('proshot_records', JSON.stringify(updated)) } catch {}
-          return updated
-        })
+        setRecords((prev) =>
+          prev.map((r) => r.id === recordId ? { ...r, referenceImageUrl: publicUrl } : r)
+        )
         console.log('[Workbench] referenceImageUrl 已升级为永久 URL')
       }
 
@@ -240,37 +303,77 @@ export default function HomePage() {
       console.log('[Workbench] API 响应数据:', result)
 
       if (result.success) {
-        setRecords((prev) => {
-          const updated = prev.map((r) =>
-            r.id === recordId ? { ...r, mainImage: result.imageUrl, generating: false } : r
+        // 将临时 recordId 替换为数据库生成的真实 ID（如有），保证后续操作一致
+        const finalId = result.generationId ?? recordId
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === recordId
+              ? { ...r, id: finalId, mainImage: result.imageUrl, generating: false }
+              : r
           )
-          // 立即同步写入 sessionStorage，防止 Next.js RSC 路由刷新在 React 渲染前发生，
-          // 导致 state 更新被丢弃、结果图片无法显示
-          try {
-            sessionStorage.setItem('proshot_records', JSON.stringify(updated))
-          } catch {}
-          return updated
-        })
-        console.log('[Workbench] 生成成功！')
+        )
+        console.log('[Workbench] 生成成功！generationId:', finalId)
+        // 生成成功后刷新积分确保 UI 与 DB 保持一致
+        refreshProfile().catch(() => {})
       } else {
         setRecords((prev) =>
           prev.map((r) => (r.id === recordId ? { ...r, generating: false } : r))
         )
+        // 生成失败 → 返还积分
+        if (creditDeducted) {
+          console.log('[Workbench] 生成失败，返还积分...')
+          await addCredit(cost)
+        }
         console.error('[Workbench] 生成失败:', result.error)
-        alert(result.error || '生成失败，请重试')
+        alert(result.error || '生成失败，积分已返还，请重试')
       }
     } catch (error) {
       setRecords((prev) =>
         prev.map((r) => (r.id === recordId ? { ...r, generating: false } : r))
       )
+      // 异常 → 返还积分
+      if (creditDeducted) {
+        console.log('[Workbench] 发生异常，返还积分...')
+        await addCredit(cost)
+      }
       console.error('[Workbench] 发生异常:', error)
-      alert('生成失败: ' + (error instanceof Error ? error.message : '未知错误'))
+      alert('生成失败，积分已返还。错误：' + (error instanceof Error ? error.message : '未知错误'))
     }
   }
 
   const handleGenerateMultiPose = async (recordId: string) => {
     const record = records.find((r) => r.id === recordId)
     if (!record?.mainImage) return
+
+    // 1. 检查登录态（mock 模式跳过）
+    if (!MODEL_CONFIG.mockMode) {
+      if (!user) {
+        setShowAuthDialog(true)
+        return
+      }
+
+      // 2. 检查积分余额
+      const cost = siteConfig.credits.multiPoseCost
+      const currentCredits = profile?.credits ?? 0
+      if (currentCredits < cost) {
+        alert(`积分不足（当前 ${currentCredits} 积分，生成套图需要 ${cost} 积分），请购买积分后再试`)
+        return
+      }
+    }
+
+    const multiPoseCost = siteConfig.credits.multiPoseCost
+    let creditDeducted = false
+
+    // 3. 虚扣除积分
+    if (!MODEL_CONFIG.mockMode && user) {
+      const deductResult = await deductCredit(multiPoseCost)
+      if (!deductResult.success) {
+        alert(deductResult.error || '积分扣除失败，请重试')
+        return
+      }
+      creditDeducted = true
+      console.log(`[Workbench] 已扣除 ${multiPoseCost} 积分（套图），剩余 ${deductResult.newBalance} 积分`)
+    }
 
     setRecords((prev) =>
       prev.map((r) => (r.id === recordId ? { ...r, generatingMultiPose: true } : r))
@@ -297,14 +400,24 @@ export default function HomePage() {
         setRecords((prev) =>
           prev.map((r) => (r.id === recordId ? { ...r, generatingMultiPose: false } : r))
         )
-        alert(result.error || '生成多视角图失败')
+        // 生成失败 → 返还积分
+        if (creditDeducted) {
+          console.log('[Workbench] 套图生成失败，返还积分...')
+          await addCredit(multiPoseCost)
+        }
+        alert(result.error || '生成套图失败，积分已返还，请重试')
       }
     } catch (error) {
       setRecords((prev) =>
         prev.map((r) => (r.id === recordId ? { ...r, generatingMultiPose: false } : r))
       )
+      // 异常 → 返还积分
+      if (creditDeducted) {
+        console.log('[Workbench] 套图生成异常，返还积分...')
+        await addCredit(multiPoseCost)
+      }
       console.error('多视角生成失败:', error)
-      alert('生成多视角图失败，请稍后重试')
+      alert('生成套图失败，积分已返还，请稍后重试')
     }
   }
 
@@ -447,7 +560,7 @@ export default function HomePage() {
               {!user ? (
                 <p className="text-[11px] text-center text-muted-foreground">
                   <Gift className="inline h-3 w-3 mr-1 text-primary/70" />
-                  新用户注册即送 {siteConfig.credits.initial} 积分
+                  注册送 {siteConfig.credits.initial} 积分 · 主图 {siteConfig.credits.mainImageCost} 积分/套图 {siteConfig.credits.multiPoseCost} 积分
                 </p>
               ) : (
                 profile && (
@@ -455,7 +568,7 @@ export default function HomePage() {
                     积分：
                     <span className="text-primary font-mono font-bold">{profile.credits}</span>
                     <span className="mx-1 opacity-40">·</span>
-                    预览免费，下载 1 积分/张
+                    主图 {siteConfig.credits.mainImageCost} 积分 · 套图 {siteConfig.credits.multiPoseCost} 积分
                   </p>
                 )
               )}

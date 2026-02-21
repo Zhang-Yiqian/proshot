@@ -36,20 +36,25 @@
 | 模块 | 描述 | 登录要求 |
 |-----|------|---------|
 | **服装上身** | 将服装穿到真人模特身上 | 生成时需登录 |
-| **物品场景** | 将物品放置到场景中（预留功能） | 生成时需登录 |
-| **我的作品** | 查看历史生成记录 | 需登录 |
+| **多姿势套图** | 基于主图生成 3 张不同姿势的图片 | 需登录 |
 | **积分充值** | 购买积分包 | 需登录 |
 | **账号设置** | 管理个人信息 | 需登录 |
 
 ### 3.3 生成流程
 
 ```
-上传图片 → 选择模式(服装上身/物品场景) → 配置参数 → 一键生成
+上传图片 → 选择场景预设 → 点击"一键上镜"（扣除 1 积分）
     ↓
-[未登录] → 弹出注册/登录弹窗 → 完成认证
+[未登录] → 弹出登录弹窗 → 完成认证
     ↓
-调用AI模型 → 展示预览图(免费) → 下载高清图(扣1积分)
+上传原图到 Supabase Storage → 调用 AI 模型 → 展示主图
+    ↓
+可选：点击"生成套图"（扣除 5 积分）→ 并行生成 3 张不同姿势 → 展示套图
+    ↓
+下载高清图
 ```
+
+**失败处理：** 生成失败时自动退还已扣积分
 
 ---
 
@@ -57,16 +62,18 @@
 
 ### 4.1 核心生成引擎
 
-**模型调用方式：** 
+**模型调用方式：**
 - ⚠️ **所有AI模型调用必须通过 OpenRouter 平台完成**
 - OpenRouter 统一支付，便于成本控制和模型切换
 - 使用 OpenAI 兼容的 API 格式
 
 **模型配置：**
+
 | 用途 | 模型 | 说明 |
 |-----|------|------|
-| 主图生成 | `google/gemini-3-pro-image-preview` | 高质量，适合首张生成 |
-| 套图扩展 | `google/gemini-2.5-flash-image-preview` | 快速，适合批量生成 |
+| 主图生成 | `google/gemini-2.5-flash-image` | 服装上身/物品场景生成 |
+| 套图扩展 | `google/gemini-2.5-flash-image` | 多姿势并行生成（3张） |
+| 图片扩展（预留） | `google/gemini-2.5-flash-image-preview` | 未来扩展用途 |
 
 **环境变量：**
 ```env
@@ -74,22 +81,68 @@ OPENROUTER_API_KEY=sk-or-xxx        # OpenRouter API密钥
 OPENROUTER_API_BASE_URL=https://openrouter.ai/api/v1
 ```
 
+**Mock 模式（开发调试）：**
+- `mockMode`：跳过用户鉴权，便于本地开发测试
+- `mockMainImageMode`：跳过 AI 模型调用，返回占位图片
+
 ### 4.2 积分系统
 
-| 操作 | 积分消耗 |
-|-----|---------|
-| 生成预览图 | 免费 |
-| 下载高清无水印图 | 1积分/张 |
-| 新用户注册 | 赠送5积分 |
+| 操作 | 积分消耗/获得 |
+|-----|------------|
+| 生成主图 | -1 积分/张 |
+| 生成多姿势套图 | -5 积分（生成 3 张） |
+| 新用户注册 | +6 积分（赠送） |
 
-### 4.3 图片管理
+**积分规则：**
+- 积分不足时拒绝生成，提示充值
+- 生成失败时自动退还积分
+- 所有积分操作均在服务端验证，防止篡改
+
+### 4.3 场景预设
+
+**服装场景（6 种）：**
+
+| 场景ID | 场景名称 | 描述 |
+|--------|---------|------|
+| `white-bg` | 极简白底 | 专业电商白底，突出商品细节 |
+| `street` | 街拍风 | 城市街头自然光线，时尚感强 |
+| `home` | 居家日常 | 温馨室内环境，展示日常穿搭 |
+| `cafe` | 咖啡馆 | 小资咖啡馆氛围，文艺轻奢感 |
+| `office` | 商务办公 | 专业商务场景，职场穿搭展示 |
+| `outdoor` | 户外自然 | 自然风光背景，清新户外风格 |
+
+**物品场景（预留，4 种）：** 家居展示、桌面摆设、户外展示、商业陈列
+
+### 4.4 账号注册
+
+**注册流程（两步）：**
+1. 填写邮箱 + 密码（至少 8 位，含字母和数字）+ 确认密码 → 发送邮箱验证码
+2. 输入 6 位邮箱验证码 → 完成注册
+
+**注册完成后：**
+- 自动创建用户 Profile
+- 赠送 6 积分
+
+### 4.5 账号登录
+
+支持以下登录方式：
+
+| 方式 | 说明 |
+|-----|------|
+| 密码登录 | 邮箱 + 密码 |
+| 邮箱验证码登录 | 邮箱 + Supabase Auth OTP（6位码，含倒计时） |
+
+### 4.6 图片管理
 
 **状态机：**
 ```
-Pending → Processing → Completed/Failed
+Pending → Processing → Completed / Failed
 ```
 
-**失败处理：** 生成失败时自动退还已扣积分
+**原图处理：**
+- 上传前生成 base64 缩略图（持久化显示，避免 blob URL 失效）
+- 实际上传到 Supabase Storage，升级为永久 URL
+- 生成记录中同时保存原图 URL 和生成图 URL
 
 ---
 
@@ -104,23 +157,26 @@ Pending → Processing → Completed/Failed
 | **组件库** | Shadcn/UI |
 | **图标库** | Lucide React |
 | **数据库** | Supabase (PostgreSQL) |
-| **认证** | Supabase Auth |
+| **认证** | Supabase Auth（邮箱密码 + OTP + 手机号） |
 | **存储** | Supabase Storage |
 | **AI接口** | OpenRouter API |
+| **测试框架** | Jest + React Testing Library |
 
-### 5.2 UI/UX设计理念
+### 5.2 UI/UX 设计理念
 
-本项目采用 **[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** 的设计理念：
+**视觉风格：** Apple Liquid Glass（苹果液态玻璃）风格
 
-**视觉风格：**
-- 采用 Glassmorphism（毛玻璃）风格，营造现代感
-- 深色主题为主，配合渐变色彩点缀
-- 强调视觉层次和空间感
+**核心样式类：**
+- `.glass-panel`：标准玻璃面板
+- `.glass-deep`：深度玻璃（浮层、卡片）
+- `.glass-thin`：轻薄玻璃（标签、tooltip）
+- `.btn-glow`：发光按钮效果
+- `.text-gradient`：渐变文字效果
 
 **色彩系统：**
-- 主色调：Electric Violet (#8B5CF6)
-- 强调色：Cyan (#06B6D4)
-- 背景：Deep Space (#0F0F23)
+- 主色调：蓝紫色 `hsl(250, 80%, 60%)`
+- 强调色：青色 `hsl(195, 85%, 50%)`
+- 背景：深空黑 Deep Space
 - 渐变：Purple to Cyan
 
 **字体选择：**
@@ -129,9 +185,10 @@ Pending → Processing → Completed/Failed
 - 代码/数字：JetBrains Mono
 
 **交互原则：**
-- 即时反馈：所有操作都有视觉/动画反馈
+- 即时反馈：所有操作都有视觉/动画反馈（fade-in、scale-in、float、shimmer）
 - 渐进式披露：复杂功能逐步展示
 - 错误预防：输入验证和确认提示
+- Loading 骨架屏：防止认证状态闪烁
 
 ---
 
@@ -139,59 +196,109 @@ Pending → Processing → Completed/Failed
 
 ### profiles 表
 ```sql
-id          UUID PRIMARY KEY  -- 关联 auth.users
-credits     INT DEFAULT 5     -- 积分余额
-is_subscriber BOOLEAN         -- 是否订阅用户
-created_at  TIMESTAMP
-updated_at  TIMESTAMP
+id            UUID PRIMARY KEY  -- 关联 auth.users
+credits       INT DEFAULT 6     -- 积分余额（新用户默认 6）
+is_subscriber BOOLEAN DEFAULT false  -- 是否订阅用户
+created_at    TIMESTAMP
+updated_at    TIMESTAMP
 ```
+
+**触发器：** 新用户注册时自动创建 Profile（`handle_new_user`）
 
 ### generations 表
 ```sql
 id                  UUID PRIMARY KEY
 user_id             UUID REFERENCES profiles(id)
-original_image_url  TEXT          -- 原图URL
-generated_image_url TEXT          -- 生成图URL
-prompt_used         TEXT          -- 使用的Prompt
-style_preset        TEXT          -- 风格预设
+original_image_url  TEXT          -- 原图 URL（Supabase Storage）
+generated_image_url TEXT          -- 生成图 URL（可为空）
+prompt_used         TEXT          -- 使用的 Prompt
+style_preset        TEXT          -- 风格预设（格式: "mode-sceneId"）
 mode                TEXT          -- 'clothing' | 'product'
-status              TEXT          -- pending/completed/failed
+status              TEXT          -- 'pending' | 'completed' | 'failed'
+error_message       TEXT          -- 错误信息（可为空）
 created_at          TIMESTAMP
+updated_at          TIMESTAMP
 ```
+
+**索引：** `user_id`、`status`、`created_at` 优化查询性能
+
+**安全策略：**
+- RLS（Row Level Security）：用户只能访问自己的数据
 
 ---
 
 ## 7. 页面结构
 
 ```
-/                   # 首页（工作台）- 服装上身生成
-/product            # 物品场景生成（预留）
-/gallery            # 我的作品
-/pricing            # 积分充值
-/login              # 登录
-/register           # 注册
+/                   # 首页（工作台）- 服装上身生成 + 生成记录时间线
+/pricing            # 积分充值套餐
+/about              # 关于页面（使命、技术、隐私）
+/(auth)/login       # 登录页（密码登录 + 验证码登录）
+/(auth)/register    # 注册页（两步注册流程）
+/auth/signout       # 登出路由
 ```
 
 ---
 
-## 8. 未来扩展
+## 8. API 路由设计
 
-### 8.1 物品场景图生成（Phase 2）
-- 支持家居、3C产品的场景化
+### 图片生成
+
+| 路由 | 方法 | 说明 |
+|-----|------|------|
+| `/api/generate/main` | POST | 生成主图（扣 1 积分） |
+| `/api/generate/multi-pose` | POST | 生成 3 张多姿势套图（扣 5 积分） |
+
+### 积分管理
+
+| 路由 | 方法 | 说明 |
+|-----|------|------|
+| `/api/credits` | GET | 获取积分余额 |
+| `/api/credits` | POST | 扣除/增加积分 |
+
+### 生成记录
+
+| 路由 | 方法 | 说明 |
+|-----|------|------|
+| `/api/generations` | GET | 获取用户的生成记录（倒序） |
+
+### 认证
+
+| 路由 | 方法 | 说明 |
+|-----|------|------|
+| `/api/auth/callback` | GET | OAuth/Magic Link 回调处理 |
+
+---
+
+## 9. 积分充值套餐
+
+| 套餐 | 积分 | 价格 |
+|-----|------|------|
+| 基础包 | 50 积分 | ¥49 |
+| 专业包 | 200 积分 | ¥159 |
+| 企业包 | 500 积分 | ¥349 |
+
+---
+
+## 10. 未来扩展
+
+### 10.1 物品场景图生成（Phase 2）
+- 支持家居、3C 产品的场景化
 - 更多场景预设：客厅、办公室、户外等
 - 支持自定义场景描述
 
-### 8.2 高级功能
+### 10.2 高级功能
 - 批量生成
 - 自定义模特
-- API开放平台
+- API 开放平台
 - 企业团队版
 
 ---
 
-## 9. 版本历史
+## 11. 版本历史
 
 | 版本 | 日期 | 更新内容 |
 |-----|------|---------|
 | v1.0 | 2024-01 | 初始版本 |
-| v2.0 | 2026-01 | 重构版本：优化交互、引入OpenRouter、更新UI设计理念 |
+| v2.0 | 2026-01 | 重构版本：优化交互、引入 OpenRouter、更新 UI 设计理念 |
+| v2.1 | 2026-02 | 新用户初始积分调整为 6；多姿势套图扣费调整为 5 积分/次（生成 3 张）；UI 升级为 Apple Liquid Glass 风格；新增 Jest 单元测试 |

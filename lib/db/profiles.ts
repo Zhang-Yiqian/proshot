@@ -41,7 +41,7 @@ export async function createUserProfile(userId: string): Promise<UserProfile | n
     .from('profiles')
     .insert({
       id: userId,
-      credits: siteConfig.credits.initial,
+      credits: siteConfig.credits.initial,  // 6
       is_subscriber: false,
     } as any)
     .select()

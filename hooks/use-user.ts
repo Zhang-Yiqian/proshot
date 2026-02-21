@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { UserProfile } from '@/types/user'
@@ -53,7 +53,7 @@ async function fetchProfile(
     console.warn('[useUser] fetchProfile 未找到 profile，尝试自动创建...')
     const { data: created, error: createError } = await supabase
       .from('profiles')
-      .insert({ id: userId, credits: 5, is_subscriber: false } as any)
+      .insert({ id: userId, credits: 6, is_subscriber: false } as any)
       .select()
       .single()
 
@@ -89,6 +89,26 @@ export function useUser() {
   const supabase = supabaseRef.current
   // 用 ref 追踪当前 userId，避免 useEffect 闭包捕获到初始 null 值
   const userIdRef = useRef<string | null>(null)
+
+  // 强制重新拉取最新 profile（积分扣除/返还后调用，刷新 UI 显示）
+  const refreshProfile = async () => {
+    const userId = userIdRef.current
+    if (!userId) return
+    const fresh = await fetchProfile(supabase, userId)
+    if (!fresh) return
+    setProfile(fresh)
+    writeCachedProfile(fresh)
+  }
+
+  // 直接用 API 返回的新余额立即更新 UI（避免等待 DB 读取导致积分显示滞后）
+  const updateCredits = useCallback((newCredits: number) => {
+    setProfile((prev) => {
+      if (!prev) return prev
+      const updated = { ...prev, credits: newCredits }
+      writeCachedProfile(updated)
+      return updated
+    })
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -175,5 +195,5 @@ export function useUser() {
     }
   }, [])
 
-  return { user, profile, loading }
+  return { user, profile, loading, refreshProfile, updateCredits }
 }

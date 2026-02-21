@@ -15,6 +15,5 @@ export async function GET(request: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  // 重定向到工作台
-  return NextResponse.redirect(new URL('/workbench', request.url))
+  return NextResponse.redirect(new URL('/', request.url))
 }
