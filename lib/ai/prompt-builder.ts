@@ -2,28 +2,22 @@
  * Prompt 构建器
  */
 
-import { SCENE_PRESETS, PRODUCT_SCENE_PRESETS } from '@/config/presets'
+import { findSceneById, PRODUCT_SCENE_PRESETS } from '@/config/presets'
 
 /**
  * 构建服装上身 Prompt
+ * @param sceneId  场景 ID（支持新旧两套 ID）
+ * @param customScene  用户自定义场景描述（非空时优先使用）
  */
-export function buildClothingPrompt(sceneId: string): string {
-  const scene = SCENE_PRESETS.find(s => s.id === sceneId) as typeof SCENE_PRESETS[number] | undefined
-  
-  if (!scene) {
-    // 默认场景
-    return `你是一个专业的时尚摄影大师。请将上传的白底服装图中的衣服穿在一个亚洲模特身上，背景为纯白色背景。
+export function buildClothingPrompt(sceneId: string, customScene?: string): string {
+  // 自定义场景优先
+  const sceneName = customScene?.trim() || null
+  const promptDetail = sceneName
+    ? sceneName
+    : (findSceneById(sceneId)?.promptDetail ?? '纯白色背景，专业摄影棚灯光，简约时尚')
 
-要求：
-1. 完全保持衣服的款式、颜色、图案、细节（如logo、纽扣、拉链等）
-2. 模特为20-30岁的亚洲女性/男性（根据服装风格自动选择）
-3. 模特姿态自然优美，展现服装的版型和特点
-4. 专业摄影棚灯光，简约时尚
-5. 高清摄影质感，商业大片水准`
-  }
-  
-  const promptDetail = scene.promptDetail
-  
+  const displayName = sceneName || findSceneById(sceneId)?.name || '自定义场景'
+
   return `你是一个专业的时尚摄影大师。请将上传的白底服装图中的衣服穿在一个亚洲模特身上。
 
 场景要求：${promptDetail}
@@ -32,7 +26,7 @@ export function buildClothingPrompt(sceneId: string): string {
 1. 完全保持衣服的款式、颜色、图案、细节（如logo、纽扣、拉链等）
 2. 模特为20-30岁的亚洲女性/男性（根据服装风格自动选择）
 3. 模特姿态自然优美，展现服装的版型和特点
-4. 光线和场景完美融合，营造${scene.name}的氛围
+4. 光线和场景完美融合，营造${displayName}的氛围
 5. 高清摄影质感，商业大片水准`
 }
 
@@ -40,10 +34,10 @@ export function buildClothingPrompt(sceneId: string): string {
  * 构建物品场景 Prompt
  */
 export function buildProductPrompt(sceneId: string): string {
-  const scene = PRODUCT_SCENE_PRESETS.find(s => s.id === sceneId)
+  const scene = PRODUCT_SCENE_PRESETS.find((s) => s.id === sceneId)
   const sceneName = scene?.name || '客厅'
   const sceneDesc = scene?.description || '现代简约场景'
-  
+
   return `你是一个专业的产品摄影大师。请将上传的产品图放置到${sceneName}场景中。
 
 场景要求：${sceneDesc}

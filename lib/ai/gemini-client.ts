@@ -154,10 +154,11 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
  */
 export async function generateClothingImage(
   referenceImageUrl: string,
-  sceneId: string
+  sceneId: string,
+  customScene?: string
 ): Promise<GenerateResult> {
   console.log('[AI Client] === 开始生成服装上身图 ===')
-  console.log('[AI Client] 场景ID:', sceneId)
+  console.log('[AI Client] 场景ID:', sceneId, '自定义场景:', customScene || '(无)')
   console.log('[AI Client] 参考图URL:', referenceImageUrl)
 
   // 主图 Mock 模式：直接返回固定图片，跳过模型调用
@@ -168,9 +169,9 @@ export async function generateClothingImage(
     return { success: true, imageUrl: MODEL_CONFIG.mockImageUrl }
   }
   
-  // 使用 prompt-builder 构建完整的 prompt
+  // 使用 prompt-builder 构建完整的 prompt（自定义场景优先）
   const { buildClothingPrompt } = await import('./prompt-builder')
-  const prompt = buildClothingPrompt(sceneId)
+  const prompt = buildClothingPrompt(sceneId, customScene)
   
   console.log('[AI Client] 构建的 Prompt:', prompt.substring(0, 300) + '...')
   

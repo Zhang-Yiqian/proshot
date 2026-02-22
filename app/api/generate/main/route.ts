@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('[API] 接收到的请求数据:', body)
     
-    const { originalImageUrl, sceneType, mode = 'clothing' } = body
+    const { originalImageUrl, sceneType, mode = 'clothing', customScene = '' } = body
 
     if (!originalImageUrl || !sceneType) {
       console.error('[API] 参数缺失:', { originalImageUrl, sceneType })
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       console.log('[API] 主图使用 Mock 模式，跳过鉴权，直接调用生成函数')
       const result = mode === 'product'
         ? await generateProductImage(originalImageUrl, sceneType)
-        : await generateClothingImage(originalImageUrl, sceneType)
+        : await generateClothingImage(originalImageUrl, sceneType, customScene)
 
       console.log('[API] 主图 Mock 生成结果:', result)
       return NextResponse.json({
@@ -79,11 +79,11 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] 生成记录创建成功:', generation.id)
 
-    // 调用 AI 生成：直接传入场景ID
-    console.log('[API] 开始调用 AI 生成图片...')
+    // 调用 AI 生成：传入场景ID和可选的自定义场景
+    console.log('[API] 开始调用 AI 生成图片...', { sceneType, customScene: customScene || '(无)' })
     const result = mode === 'product'
       ? await generateProductImage(originalImageUrl, sceneType)
-      : await generateClothingImage(originalImageUrl, sceneType)
+      : await generateClothingImage(originalImageUrl, sceneType, customScene)
 
     console.log('[API] AI 生成完成:', result)
 

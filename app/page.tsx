@@ -11,8 +11,9 @@ import { useCredits } from '@/hooks/use-credits'
 import { createClient } from '@/lib/supabase/client'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
-import { SCENE_PRESETS } from '@/config/presets'
+import { SCENE_PRESETS, findSceneById } from '@/config/presets'
 import { MODEL_CONFIG } from '@/config/models'
+import { SceneSelector } from '@/components/workbench/scene-selector'
 import type { GenerationRecord, GenerationMode } from '@/types/generation-record'
 import type { GenerationResult } from '@/types/generation'
 
@@ -79,8 +80,25 @@ export default function HomePage() {
   const mode: GenerationMode = 'clothing'
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
-  const [selectedScene, setSelectedScene] = useState('white-bg')
+  // null 表示未选中任何预设场景（与自定义输入互斥）
+  const [selectedScene, setSelectedScene] = useState<string | null>('pure-white')
+  const [customScene, setCustomScene] = useState('')
   const [showAuthDialog, setShowAuthDialog] = useState(false)
+
+  /** 选择预设场景时，清空自定义输入（互斥逻辑） */
+  const handleSceneChange = (sceneId: string | null) => {
+    setSelectedScene(sceneId)
+    if (sceneId !== null) setCustomScene('')
+  }
+
+  /** 输入自定义场景时，取消预设选中（互斥逻辑） */
+  const handleCustomSceneChange = (value: string) => {
+    setCustomScene(value)
+    if (value.trim()) setSelectedScene(null)
+  }
+
+  /** 是否满足「必须选一个」校验 */
+  const hasScene = !!selectedScene || !!customScene.trim()
 
   const [records, setRecords] = useState<GenerationRecord[]>([])
   // 追踪上一次的 userId，用于判断登录/登出事件
@@ -171,7 +189,8 @@ export default function HomePage() {
 
     if (!selectedFile) return
 
-    const scene = SCENE_PRESETS.find((s) => s.id === selectedScene)!
+    const sceneInfo = (selectedScene ? findSceneById(selectedScene) : null)
+      ?? { name: customScene.trim() || '自定义场景', icon: '📷', promptDetail: '' }
     const recordId = `record-${Date.now()}`
 
     // Bug 修复：referenceImageUrl 使用 base64 缩略图而非 blob URL。
@@ -182,13 +201,14 @@ export default function HomePage() {
     console.log(`[Workbench] 缩略图生成完成，大小约 ${Math.round(thumbnailUrl.length / 1024)}KB`)
 
     // 立即新增一条"生成中"记录，出现在时间线顶部
+    const displayName = customScene.trim() ? `自定义: ${customScene.trim()}` : sceneInfo.name
     const newRecord: GenerationRecord = {
       id: recordId,
       timestamp: new Date(),
       mode,
-      sceneId: selectedScene,
-      sceneName: scene.name,
-      sceneIcon: scene.icon,
+      sceneId: selectedScene ?? 'custom',
+      sceneName: displayName,
+      sceneIcon: sceneInfo.icon,
       referenceImageUrl: thumbnailUrl,  // base64，持久化安全
       referenceFileName: selectedFile.name,
       mainImage: null,
@@ -281,13 +301,15 @@ export default function HomePage() {
         console.log('[Workbench] referenceImageUrl 已升级为永久 URL')
       }
 
-      console.log('[Workbench] 调用生成 API...', { originalImageUrl: publicUrl, sceneType: selectedScene, mode })
+      const sceneType = selectedScene ?? 'custom'
+      console.log('[Workbench] 调用生成 API...', { originalImageUrl: publicUrl, sceneType, customScene: customScene || '(无)', mode })
       const response = await fetch('/api/generate/main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalImageUrl: publicUrl,
-          sceneType: selectedScene,
+          sceneType,
+          customScene: customScene.trim(),
           mode,
         }),
       })
@@ -421,16 +443,17 @@ export default function HomePage() {
     }
   }
 
-  const currentScene = SCENE_PRESETS.find((s) => s.id === selectedScene)
+  const currentScene = selectedScene ? findSceneById(selectedScene) : null
 
   return (
-    <div className="flex min-h-screen flex-col bg-app">
+    <div className="flex h-screen flex-col bg-app overflow-hidden">
       <Header />
 
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden min-h-0">
         {/* ========== 左侧配置栏 ========== */}
-        <aside className="w-[340px] flex-none h-full border-r border-divider bg-sidebar overflow-y-auto scrollbar-thin">
-          <div className="p-5 space-y-5">
+        <aside className="w-[340px] flex-none flex flex-col border-r border-divider bg-sidebar overflow-hidden">
+          {/* ── 可滚动的选择区 ── */}
+          <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-4">
             {/* 标题 */}
             <div className="pt-1">
               <h1 className="text-xl font-bold mb-1 bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
@@ -498,7 +521,7 @@ export default function HomePage() {
               />
             </div>
 
-            {/* 2. 选择场景 */}
+            {/* 2. 选择拍摄场景 */}
             <div className="glass-panel p-4 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/12 text-primary text-[11px] font-bold">
@@ -507,72 +530,78 @@ export default function HomePage() {
                 选择拍摄场景
               </h3>
 
-              <div className="grid grid-cols-3 gap-2">
-                {SCENE_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => setSelectedScene(preset.id)}
-                    className={cn(
-                      'flex flex-col items-center justify-center p-2.5 rounded-xl border transition-all duration-200',
-                      selectedScene === preset.id
-                        ? 'border-primary/40 bg-primary/8 shadow-sm shadow-primary/10'
-                        : 'border-divider/60 bg-muted/10 hover:border-primary/25 hover:bg-muted/20'
-                    )}
-                  >
-                    <span className="text-lg mb-1 leading-none">{preset.icon}</span>
-                    <span
-                      className={cn(
-                        'text-[11px] font-medium text-center leading-tight',
-                        selectedScene === preset.id ? 'text-primary' : 'text-muted-foreground'
-                      )}
-                    >
-                      {preset.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {currentScene && (
-                <p className="text-[11px] text-muted-foreground/70 bg-muted/20 rounded-lg px-3 py-2 leading-relaxed">
-                  {currentScene.description}
-                </p>
-              )}
+              <SceneSelector
+                selectedScene={selectedScene}
+                onSceneChange={handleSceneChange}
+                customSceneActive={!!customScene.trim()}
+              />
             </div>
+          </div>
 
-            {/* 3. 生成按钮 */}
-            <div className="sticky bottom-0 left-0 right-0 bg-sidebar/80 backdrop-blur-xl pt-3 pb-2 space-y-2.5">
-              <Button
-                size="lg"
+          {/* ── 固定吸底的操作区 ── */}
+          <div className="flex-shrink-0 border-t border-divider bg-sidebar px-5 pt-3 pb-4 space-y-2.5">
+            {/* 自定义场景输入 */}
+            <div className="relative">
+              <input
+                type="text"
+                value={customScene}
+                onChange={(e) => handleCustomSceneChange(e.target.value)}
+                placeholder="或输入自定义场景，例如：黄昏雨天..."
                 className={cn(
-                  'w-full h-11 text-sm font-semibold gap-2 transition-all duration-200',
-                  'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground',
-                  'shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35',
-                  'disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed'
+                  'w-full h-9 px-3 rounded-xl text-xs border transition-all duration-200',
+                  'placeholder:text-muted-foreground/40 text-foreground',
+                  'focus:outline-none',
+                  customScene.trim()
+                    ? 'bg-primary/6 border-primary/35 focus:border-primary/50'
+                    : 'bg-muted/20 border-divider/60 focus:border-primary/35 focus:bg-primary/4'
                 )}
-                disabled={!selectedFile}
-                onClick={handleGenerate}
-              >
-                <Sparkles className="h-4 w-4" />
-                一键上镜
-                {!user && <span className="text-xs opacity-70 font-normal">（需注册）</span>}
-              </Button>
-
-              {!user ? (
-                <p className="text-[11px] text-center text-muted-foreground">
-                  <Gift className="inline h-3 w-3 mr-1 text-primary/70" />
-                  注册送 {siteConfig.credits.initial} 积分 · 主图 {siteConfig.credits.mainImageCost} 积分/套图 {siteConfig.credits.multiPoseCost} 积分
-                </p>
-              ) : (
-                profile && (
-                  <p className="text-[11px] text-center text-muted-foreground">
-                    积分：
-                    <span className="text-primary font-mono font-bold">{profile.credits}</span>
-                    <span className="mx-1 opacity-40">·</span>
-                    主图 {siteConfig.credits.mainImageCost} 积分 · 套图 {siteConfig.credits.multiPoseCost} 积分
-                  </p>
-                )
+              />
+              {customScene.trim() && (
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-semibold text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded-full pointer-events-none">
+                  生效中
+                </span>
               )}
             </div>
+
+            {/* 未选择任何场景时的提示 */}
+            {!hasScene && (
+              <p className="text-[10px] text-amber-500/80 text-center flex items-center justify-center gap-1">
+                <span>⚠</span> 请选择一个场景或输入自定义描述
+              </p>
+            )}
+
+            {/* 一键上镜按钮 */}
+            <Button
+              size="lg"
+              className={cn(
+                'w-full h-11 text-sm font-semibold gap-2 transition-all duration-200',
+                'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground',
+                'shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/35',
+                'disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed'
+              )}
+              disabled={!selectedFile || !hasScene}
+              onClick={handleGenerate}
+            >
+              <Sparkles className="h-4 w-4" />
+              一键上镜
+              {!user && <span className="text-xs opacity-70 font-normal">（需注册）</span>}
+            </Button>
+
+            {!user ? (
+              <p className="text-[11px] text-center text-muted-foreground">
+                <Gift className="inline h-3 w-3 mr-1 text-primary/70" />
+                注册送 {siteConfig.credits.initial} 积分 · 主图 {siteConfig.credits.mainImageCost} 积分/套图 {siteConfig.credits.multiPoseCost} 积分
+              </p>
+            ) : (
+              profile && (
+                <p className="text-[11px] text-center text-muted-foreground">
+                  积分：
+                  <span className="text-primary font-mono font-bold">{profile.credits}</span>
+                  <span className="mx-1 opacity-40">·</span>
+                  主图 {siteConfig.credits.mainImageCost} 积分 · 套图 {siteConfig.credits.multiPoseCost} 积分
+                </p>
+              )
+            )}
           </div>
         </aside>
 
