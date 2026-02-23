@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Sparkles, LogOut, CreditCard } from 'lucide-react'
+import { LogOut, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUser } from '@/hooks/use-user'
 import { cn } from '@/lib/utils'
+import { Logo } from '@/components/common/Logo'
 
 export function Header() {
   const pathname = usePathname()
@@ -29,20 +30,7 @@ export function Header() {
     >
         <div className="flex h-12 items-center justify-between px-5">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div
-            className="flex items-center justify-center w-7 h-7 rounded-lg"
-            style={{
-              background: 'linear-gradient(135deg, hsl(250,80%,60%), hsl(195,85%,50%))',
-              boxShadow: '0 2px 8px hsla(250,80%,60%,0.35)',
-            }}
-          >
-            <Sparkles className="h-3.5 w-3.5 text-white" />
-          </div>
-          <span className="font-display font-bold text-base tracking-tight group-hover:text-gradient transition-all duration-200">
-            ProShot
-          </span>
-        </Link>
+        <Logo width={28} height={28} />
 
         {/* 导航 */}
         <nav className="flex items-center gap-1">

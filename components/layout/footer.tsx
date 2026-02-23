@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
+import { ProShotIcon } from '@/components/common/ProShotIcon'
 
 export function Footer() {
   return (
@@ -10,9 +10,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-6 h-6 rounded bg-gradient-to-br from-primary to-secondary">
-              <Sparkles className="h-3 w-3 text-white" />
-            </div>
+            <ProShotIcon size={24} />
             <span className="font-display font-semibold">ProShot</span>
           </div>
 

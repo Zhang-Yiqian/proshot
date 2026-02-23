@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Mail, Lock, MessageSquare, Sparkles, Loader2, ArrowLeft, ChevronLeft, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, MessageSquare, Loader2, ArrowLeft, ChevronLeft, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
+import { ProShotIcon } from '@/components/common/ProShotIcon'
 
 type LoginMethod = 'password' | 'otp'
 type OtpStep = 'email' | 'code'
@@ -152,8 +153,8 @@ export default function LoginPage() {
         <div className="glass-card p-8">
           {/* 头部 */}
           <div className="text-center mb-8">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary">
-              <Sparkles className="h-7 w-7 text-white" />
+            <div className="mx-auto mb-4 flex justify-center">
+              <ProShotIcon size={56} />
             </div>
             <h1 className="text-2xl font-display font-bold">欢迎回来</h1>
             <p className="text-muted-foreground mt-1 text-sm">选择登录方式</p>

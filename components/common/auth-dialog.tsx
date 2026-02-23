@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { X, Mail, Lock, MessageSquare, Sparkles, Loader2, Gift, ChevronLeft, Eye, EyeOff } from 'lucide-react'
+import { X, Mail, Lock, MessageSquare, Loader2, Gift, ChevronLeft, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import { siteConfig } from '@/config/site'
+import { ProShotIcon } from '@/components/common/ProShotIcon'
 
 interface AuthDialogProps {
   open: boolean
@@ -180,8 +181,8 @@ export function AuthDialog({ open, onClose }: AuthDialogProps) {
 
           {/* 头部 */}
           <div className="text-center mb-6">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary">
-              <Sparkles className="h-7 w-7 text-white" />
+            <div className="mx-auto mb-4 flex justify-center">
+              <ProShotIcon size={56} />
             </div>
             <h2 className="text-2xl font-display font-bold mb-2">欢迎使用 ProShot</h2>
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary text-sm">
