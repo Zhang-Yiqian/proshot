@@ -2,6 +2,52 @@
  * ProShot 预设配置
  */
 
+// ────────────────────────────────────────────────────────
+// 模特类型配置
+// ────────────────────────────────────────────────────────
+
+export interface ModelType {
+  id: string
+  name: string
+  icon: string
+  promptDetail: string
+}
+
+export const MODEL_TYPES: ModelType[] = [
+  {
+    id: 'western-female',
+    name: '欧美女模特',
+    icon: '👱‍♀️',
+    promptDetail: '20-28岁欧美女性模特，深邃立体的五官，高挑纤细的身材，金棕色头发，气质时尚大气',
+  },
+  {
+    id: 'western-male',
+    name: '欧美男模特',
+    icon: '👱‍♂️',
+    promptDetail: '22-32岁欧美男性模特，轮廓分明的面部，强健匀称的身材，浅棕或深色头发，阳刚帅气',
+  },
+  {
+    id: 'asian-female',
+    name: '亚洲女模特',
+    icon: '👩',
+    promptDetail: '20-28岁亚洲女性模特，精致秀丽的面容，纤细优雅的身材，黑色直发，温柔知性气质',
+  },
+  {
+    id: 'asian-male',
+    name: '亚洲男模特',
+    icon: '👨',
+    promptDetail: '22-32岁亚洲男性模特，清秀英俊的面容，匀称干练的身材，黑色整洁头发，时尚有型',
+  },
+]
+
+export const DEFAULT_MODEL_TYPE_ID = 'asian-female'
+
+export type ModelTypeId = typeof MODEL_TYPES[number]['id']
+
+// ────────────────────────────────────────────────────────
+// 场景配置
+// ────────────────────────────────────────────────────────
+
 export interface SceneItem {
   id: string
   name: string

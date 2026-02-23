@@ -217,7 +217,7 @@ describe('deductCredits', () => {
     expect(mockUpdateSelectSingle).not.toHaveBeenCalled()
   })
 
-  it('套图积分不足时（余额4 < 5）应失败', async () => {
+  it('多姿势图积分不足时（余额4 < 5）应失败', async () => {
     mockSelectSingle.mockResolvedValue({
       data: { id: 'u1', credits: 4, is_subscriber: false, created_at: '', updated_at: '' },
       error: null,
@@ -248,7 +248,7 @@ describe('deductCredits', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 describe('addCredits', () => {
-  it('返还1积分（主图生成失败）应成功', async () => {
+  it('返还1积分（上身图生成失败）应成功', async () => {
     mockSelectSingle.mockResolvedValue({
       data: { id: 'u1', credits: 5, is_subscriber: false, created_at: '', updated_at: '' },
       error: null,
@@ -264,7 +264,7 @@ describe('addCredits', () => {
     expect(result.newBalance).toBe(6)
   })
 
-  it('返还5积分（套图生成失败）应成功', async () => {
+  it('返还5积分（多姿势图生成失败）应成功', async () => {
     mockSelectSingle.mockResolvedValue({
       data: { id: 'u1', credits: 1, is_subscriber: false, created_at: '', updated_at: '' },
       error: null,

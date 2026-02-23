@@ -11,7 +11,7 @@ import { useCredits } from '@/hooks/use-credits'
 import { createClient } from '@/lib/supabase/client'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
-import { SCENE_PRESETS, findSceneById } from '@/config/presets'
+import { SCENE_PRESETS, MODEL_TYPES, DEFAULT_MODEL_TYPE_ID, findSceneById } from '@/config/presets'
 import { MODEL_CONFIG } from '@/config/models'
 import { SceneSelector } from '@/components/workbench/scene-selector'
 import type { GenerationRecord, GenerationMode } from '@/types/generation-record'
@@ -80,6 +80,7 @@ export default function HomePage() {
   const mode: GenerationMode = 'clothing'
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string>('')
+  const [selectedModelType, setSelectedModelType] = useState<string>(DEFAULT_MODEL_TYPE_ID)
   // null 表示未选中任何预设场景（与自定义输入互斥）
   const [selectedScene, setSelectedScene] = useState<string | null>('pure-white')
   const [customScene, setCustomScene] = useState('')
@@ -182,7 +183,7 @@ export default function HomePage() {
       const cost = siteConfig.credits.mainImageCost
       const currentCredits = profile?.credits ?? 0
       if (currentCredits < cost) {
-        alert(`积分不足（当前 ${currentCredits} 积分，生成主图需要 ${cost} 积分），请购买积分后再试`)
+        alert(`积分不足（当前 ${currentCredits} 积分，生成上身图需要 ${cost} 积分），请购买积分后再试`)
         return
       }
     }
@@ -302,7 +303,7 @@ export default function HomePage() {
       }
 
       const sceneType = selectedScene ?? 'custom'
-      console.log('[Workbench] 调用生成 API...', { originalImageUrl: publicUrl, sceneType, customScene: customScene || '(无)', mode })
+      console.log('[Workbench] 调用生成 API...', { originalImageUrl: publicUrl, sceneType, customScene: customScene || '(无)', mode, modelType: selectedModelType })
       const response = await fetch('/api/generate/main', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -311,6 +312,7 @@ export default function HomePage() {
           sceneType,
           customScene: customScene.trim(),
           mode,
+          modelType: selectedModelType,
         }),
       })
 
@@ -378,7 +380,7 @@ export default function HomePage() {
       const cost = siteConfig.credits.multiPoseCost
       const currentCredits = profile?.credits ?? 0
       if (currentCredits < cost) {
-        alert(`积分不足（当前 ${currentCredits} 积分，生成套图需要 ${cost} 积分），请购买积分后再试`)
+        alert(`积分不足（当前 ${currentCredits} 积分，生成多姿势图需要 ${cost} 积分），请购买积分后再试`)
         return
       }
     }
@@ -394,7 +396,7 @@ export default function HomePage() {
         return
       }
       creditDeducted = true
-      console.log(`[Workbench] 已扣除 ${multiPoseCost} 积分（套图），剩余 ${deductResult.newBalance} 积分`)
+      console.log(`[Workbench] 已扣除 ${multiPoseCost} 积分（多姿势图），剩余 ${deductResult.newBalance} 积分`)
     }
 
     setRecords((prev) =>
@@ -424,10 +426,10 @@ export default function HomePage() {
         )
         // 生成失败 → 返还积分
         if (creditDeducted) {
-          console.log('[Workbench] 套图生成失败，返还积分...')
+          console.log('[Workbench] 多姿势图生成失败，返还积分...')
           await addCredit(multiPoseCost)
         }
-        alert(result.error || '生成套图失败，积分已返还，请重试')
+        alert(result.error || '生成多姿势图失败，积分已返还，请重试')
       }
     } catch (error) {
       setRecords((prev) =>
@@ -435,11 +437,11 @@ export default function HomePage() {
       )
       // 异常 → 返还积分
       if (creditDeducted) {
-        console.log('[Workbench] 套图生成异常，返还积分...')
+        console.log('[Workbench] 多姿势图生成异常，返还积分...')
         await addCredit(multiPoseCost)
       }
-      console.error('多视角生成失败:', error)
-      alert('生成套图失败，积分已返还，请稍后重试')
+      console.error('多姿势图生成失败:', error)
+      alert('生成多姿势图失败，积分已返还，请稍后重试')
     }
   }
 
@@ -521,11 +523,37 @@ export default function HomePage() {
               />
             </div>
 
-            {/* 2. 选择拍摄场景 */}
+            {/* 2. 选择模特类型 */}
             <div className="glass-panel p-4 space-y-3">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/12 text-primary text-[11px] font-bold">
                   2
+                </span>
+                选择模特类型
+              </h3>
+              <div className="grid grid-cols-2 gap-1.5">
+                {MODEL_TYPES.map((mt) => (
+                  <button
+                    key={mt.id}
+                    onClick={() => setSelectedModelType(mt.id)}
+                    className={cn(
+                      'px-2.5 py-2 rounded-xl text-[11px] font-medium text-center transition-all duration-150 border leading-tight',
+                      selectedModelType === mt.id
+                        ? 'border-primary/40 bg-primary/8 text-primary shadow-sm shadow-primary/10'
+                        : 'border-divider/50 bg-muted/15 text-muted-foreground hover:bg-muted/30 hover:text-foreground hover:border-divider'
+                    )}
+                  >
+                    {mt.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. 选择拍摄场景 */}
+            <div className="glass-panel p-4 space-y-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-primary/12 text-primary text-[11px] font-bold">
+                  3
                 </span>
                 选择拍摄场景
               </h3>
@@ -590,7 +618,7 @@ export default function HomePage() {
             {!user ? (
               <p className="text-[11px] text-center text-muted-foreground">
                 <Gift className="inline h-3 w-3 mr-1 text-primary/70" />
-                注册送 {siteConfig.credits.initial} 积分 · 主图 {siteConfig.credits.mainImageCost} 积分/套图 {siteConfig.credits.multiPoseCost} 积分
+                注册送 {siteConfig.credits.initial} 积分 · 上身图 {siteConfig.credits.mainImageCost} 积分/多姿势图 {siteConfig.credits.multiPoseCost} 积分
               </p>
             ) : (
               profile && (
@@ -598,7 +626,7 @@ export default function HomePage() {
                   积分：
                   <span className="text-primary font-mono font-bold">{profile.credits}</span>
                   <span className="mx-1 opacity-40">·</span>
-                  主图 {siteConfig.credits.mainImageCost} 积分 · 套图 {siteConfig.credits.multiPoseCost} 积分
+                  上身图 {siteConfig.credits.mainImageCost} 积分 · 多姿势图 {siteConfig.credits.multiPoseCost} 积分
                 </p>
               )
             )}
@@ -622,24 +650,31 @@ export default function HomePage() {
                     在左侧上传服装图片，选择场景后<br />点击「一键上镜」开始创作
                   </p>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground/60">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
                   <div className="flex items-center gap-1.5">
                     <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
                       <span className="text-[10px] font-bold text-primary">1</span>
                     </div>
                     上传图片
                   </div>
-                  <div className="w-4 h-px bg-divider" />
+                  <div className="w-3 h-px bg-divider" />
                   <div className="flex items-center gap-1.5">
                     <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
                       <span className="text-[10px] font-bold text-primary">2</span>
                     </div>
-                    选择场景
+                    选择模特
                   </div>
-                  <div className="w-4 h-px bg-divider" />
+                  <div className="w-3 h-px bg-divider" />
                   <div className="flex items-center gap-1.5">
                     <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
                       <span className="text-[10px] font-bold text-primary">3</span>
+                    </div>
+                    选择场景
+                  </div>
+                  <div className="w-3 h-px bg-divider" />
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-primary">4</span>
                     </div>
                     生成上镜
                   </div>

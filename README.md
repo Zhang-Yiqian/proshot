@@ -1,171 +1,97 @@
-# ProShot 上镜 - 电商智能商拍工具
+# 上镜 ProShot
 
 <div align="center">
   <h3>让商品一键入画</h3>
-  <p>将普通商品图转化为高质量真人模特营销图</p>
+  <p>上传白底服装图，30 秒生成专业真人模特商拍大片</p>
 </div>
 
-## 📖 项目简介
+---
 
-ProShot（上镜）是一款面向电商卖家的AI驱动商拍工具，专为淘宝、拼多多、Shopify卖家打造。通过AI技术，将普通的人台图、平铺图低成本转化为专业的真人模特营销图。
+## 这是什么
 
-## ✨ 核心功能
+**上镜（ProShot）** 是一款面向电商卖家的 AI 智能商拍工具。
 
-- 🎨 **智能生成**：基于Gemini AI模型，30秒内生成高质量营销图
-- 👔 **多种预设**：支持多种模特类型（亚洲/欧美，男/女）和场景（街拍/居家/咖啡馆等）
-- 💎 **高还原度**：精准保留商品Logo、版型、细节
-- 💰 **积分系统**：预览免费，下载仅需1积分
-- 📱 **现代UI**：基于Shadcn/UI构建，界面美观专业
+你只需上传一张普通的服装白底图（人台图、平铺图均可），选择模特类型和拍摄场景，点击「一键上镜」，AI 就会为你生成一张专业的真人模特营销图——无需摄影棚，无需模特费用。
 
-## 🛠️ 技术栈
+---
 
-### 前端
-- **Next.js 14** (App Router) - React框架
-- **Tailwind CSS** - 样式处理
-- **Shadcn/UI** - 组件库
-- **Lucide React** - 图标库
-- **TypeScript** - 类型安全
+## 怎么使用
 
-### 后端
-- **Next.js API Routes** - API层
-- **Supabase** - 数据库、认证、存储
-  - PostgreSQL数据库
-  - Auth认证系统
-  - Storage文件存储
-- **OpenRouter** - AI模型调用
-  - Google Gemini 2.5 Flash Image (主图生成)
-  - 支持多模态输入(图片+文本)
-  - 3:4宽高比，2K分辨率输出
+### 第一步：上传商品图
 
-## 📁 项目结构
+将服装的白底图拖入或点击上传，支持 JPG、PNG、WEBP 格式。
 
-```
-ProShot/
-├── app/                      # Next.js App Router
-│   ├── (auth)/              # 认证页面组
-│   │   ├── login/           # 登录页
-│   │   └── register/        # 注册页
-│   ├── workbench/           # 工作台
-│   ├── gallery/             # 作品画廊
-│   ├── pricing/             # 定价页面
-│   └── api/                 # API Routes
-│       ├── auth/            # 认证相关
-│       ├── generate/        # 图片生成
-│       ├── credits/         # 积分管理
-│       └── generations/     # 生成记录
-├── components/              # React组件
-│   ├── ui/                  # Shadcn/UI基础组件
-│   ├── layout/              # 布局组件
-│   ├── workbench/           # 工作台组件
-│   └── common/              # 通用组件
-├── lib/                     # 工具库
-│   ├── supabase/            # Supabase集成
-│   ├── ai/                  # AI接口封装
-│   ├── db/                  # 数据库操作
-│   └── utils/               # 工具函数
-├── config/                  # 配置文件
-│   ├── site.ts              # 网站配置
-│   ├── models.ts            # AI模型配置
-│   └── presets.ts           # 预设配置
-├── types/                   # TypeScript类型
-└── hooks/                   # 自定义Hooks
-```
+### 第二步：选择模特类型
 
-## 🚀 快速开始
+从四类模特中选择一种：
 
-### 1. 安装依赖
+| 模特类型 | 适合场景 |
+|---------|---------|
+| 欧美女模特 | 快时尚、运动、出口欧美商品 |
+| 欧美男模特 | 男装、户外、潮牌 |
+| 亚洲女模特 | 淘宝/拼多多女装、日韩风格 |
+| 亚洲男模特 | 国内男装、商务休闲 |
 
-```bash
-npm install
-```
+### 第三步：选择拍摄场景
 
-### 2. 配置环境变量
+50 种场景任选，覆盖 5 大类：
 
-创建 `.env.local` 文件：
+- **极简纯色**：白底、莫兰迪粉、深邃纯黑等 10 种
+- **街拍风格**：繁华十字、宁静小巷、咖啡店内等 10 种
+- **居家场景**：原木客厅、光影窗前、绿植阳台等 10 种
+- **商务办公**：玻璃会议室、气派大堂等 10 种
+- **户外自然**：蔚蓝海滩、银杏大道、落日海边等 10 种
 
-```env
-# Supabase配置
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+也可以直接输入自定义场景描述，例如「黄昏雨天」。
 
-# OpenRouter 配置
-OPENROUTER_API_KEY=sk-or-v1-your-api-key
-OPENROUTER_API_BASE_URL=https://openrouter.ai/api/v1
+### 第四步：点击「一键上镜」
 
-# 网站配置
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+AI 会在约 30 秒内生成图片，展示在右侧时间线中。
 
-# 开发模式（可选）
-NEXT_PUBLIC_MOCK_MODE=true
-```
+---
 
-### 3. 初始化Supabase数据库
+## 进阶功能：多姿势图
 
-在Supabase项目中执行 `supabase/migrations/001_initial_schema.sql` 脚本
+对满意的上身图，点击「生成多姿势图」，AI 将基于同一形象和场景，并行生成 3 张不同姿势的商拍图，一次扣除 5 积分。
 
-### 4. 启动开发服务器
+---
 
-```bash
-npm run dev
-```
+## 积分说明
 
-访问 http://localhost:3000
+| 操作 | 积分 |
+|------|------|
+| 新用户注册 | **+6 积分**（赠送） |
+| 生成上身图 | -1 积分/张 |
+| 生成多姿势图 | -5 积分（3 张） |
 
-## 📊 数据库设计
+- 积分不足时会提示充值，生成失败则**自动退还**积分
+- 积分充值套餐见 [定价页面](/pricing)
 
-### profiles 表（用户信息）
-- `id` - 用户ID（关联auth.users）
-- `credits` - 积分余额
-- `is_subscriber` - 是否订阅用户
-- `created_at` / `updated_at` - 时间戳
+---
 
-### generations 表（生成记录）
-- `id` - 记录ID
-- `user_id` - 用户ID
-- `original_image_url` - 原图URL
-- `generated_image_url` - 生成图URL
-- `prompt_used` - 使用的Prompt
-- `style_preset` - 风格预设
-- `status` - 状态（pending/completed/failed）
-- `created_at` / `updated_at` - 时间戳
+## 账号注册
 
-## 🎯 核心业务流程
+1. 填写邮箱和密码（至少 8 位，含字母和数字）
+2. 输入发送到邮箱的 6 位验证码
+3. 注册完成，自动获赠 6 积分
 
-1. **用户注册** → 自动创建Profile，赠送5积分
-2. **上传商品图** → 保存到Supabase Storage
-3. **选择预设** → 模特类型 + 场景类型
-4. **生成预览图** → 调用Gemini API生成（免费）
-5. **下载高清图** → 扣除1积分，下载无水印大图
+登录支持邮箱密码和邮箱验证码两种方式。
 
-## 🔑 核心文件说明
+---
 
-### AI接口层
-- `lib/ai/gemini-client.ts` - OpenRouter API 客户端（Google Gemini 2.5 Flash Image）
-- `lib/ai/prompt-builder.ts` - Prompt 构建器
+## 常见问题
 
-### 数据库操作
-- `lib/db/profiles.ts` - 用户Profile CRUD
-- `lib/db/generations.ts` - 生成记录 CRUD
+**Q：对上传的图片有什么要求？**
+白底或浅色背景的服装图效果最好，颜色越纯净、商品越清晰，生成质量越高。
 
-### 配置中心
-- `config/presets.ts` - 模特和场景预设
-- `config/models.ts` - AI模型配置
+**Q：生成的图片衣服会变形吗？**
+AI 会尽力保留服装的款式、颜色、Logo 和细节，但复杂花纹或小字体 Logo 可能存在一定误差，可多次生成选择最满意的结果。
 
-## 📝 开发规范
+**Q：不满意可以重新生成吗？**
+可以，每次点击「一键上镜」都会生成一张新图，每次消耗 1 积分。
 
-- ✅ 使用TypeScript确保类型安全
-- ✅ 遵循Next.js 14 App Router最佳实践
-- ✅ 组件采用"use client"标记客户端组件
-- ✅ API Routes使用服务端Supabase客户端
-- ✅ 统一使用Shadcn/UI组件保持UI一致性
-
-## 🤝 贡献指南
-
-欢迎提交Issue和Pull Request！
-
-## 📄 许可证
-
-MIT License
+**Q：图片可以商用吗？**
+生成的图片归用户所有，可用于电商平台商品主图、详情页等商业用途。
 
 ---
 

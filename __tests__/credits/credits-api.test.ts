@@ -140,7 +140,7 @@ describe('POST /api/credits — action: deduct', () => {
     expect(json.success).toBe(false)
   })
 
-  it('扣除主图费用（1积分）成功应返回新余额', async () => {
+  it('扣除上身图费用（1积分）成功应返回新余额', async () => {
     mockDeductCredits.mockResolvedValue({ success: true, newBalance: 5 })
 
     const res = await POST(makeRequest('POST', { action: 'deduct', amount: 1 }))
@@ -152,7 +152,7 @@ describe('POST /api/credits — action: deduct', () => {
     expect(mockDeductCredits).toHaveBeenCalledWith('user-123', 1)
   })
 
-  it('扣除套图费用（5积分）成功应返回新余额', async () => {
+  it('扣除多姿势图费用（5积分）成功应返回新余额', async () => {
     mockDeductCredits.mockResolvedValue({ success: true, newBalance: 1 })
 
     const res = await POST(makeRequest('POST', { action: 'deduct', amount: 5 }))
@@ -213,7 +213,7 @@ describe('POST /api/credits — action: add', () => {
     mockGetUserProfile.mockResolvedValue({ id: 'user-123', credits: 5, isSubscriber: false })
   })
 
-  it('返还主图费用（1积分）应成功', async () => {
+  it('返还上身图费用（1积分）应成功', async () => {
     mockAddCredits.mockResolvedValue({ success: true, newBalance: 6 })
 
     const res = await POST(makeRequest('POST', { action: 'add', amount: 1 }))
@@ -225,7 +225,7 @@ describe('POST /api/credits — action: add', () => {
     expect(mockAddCredits).toHaveBeenCalledWith('user-123', 1)
   })
 
-  it('返还套图费用（5积分）应成功', async () => {
+  it('返还多姿势图费用（5积分）应成功', async () => {
     mockAddCredits.mockResolvedValue({ success: true, newBalance: 6 })
 
     const res = await POST(makeRequest('POST', { action: 'add', amount: 5 }))

@@ -143,7 +143,7 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
             {totalImages > 0 && !record.generating && (
               <span className="px-1.5 py-0.5 rounded-md bg-muted/40 text-muted-foreground text-[11px]">
                 <Layers className="inline h-3 w-3 mr-0.5 -mt-0.5" />
-                {hasPoses ? `${totalImages}/6 张` : '1 张主图'}
+                {hasPoses ? `${totalImages}/6 张` : '1 张上身图'}
               </span>
             )}
           </div>
@@ -173,7 +173,7 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
         {record.generatingMultiPose && (
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary/10 text-secondary">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span className="text-xs font-medium">生成套图中</span>
+            <span className="text-xs font-medium">生成多姿势图中</span>
           </div>
         )}
       </div>
@@ -181,26 +181,26 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
       {/* ===== 图片横向滚动区 ===== */}
       <div className="relative">
         <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 pt-1 px-1 -mx-1">
-          {/* 主图 */}
+          {/* 上身图 */}
           <ImageCard
             src={record.mainImage ?? undefined}
-            label="主图"
+            label="上身图"
             isMain
             isLoading={record.generating && !record.mainImage}
             onDownload={record.mainImage ? () => handleDownload(record.mainImage!) : undefined}
           />
 
-          {/* 生成套图触发按钮（主图与第一个姿势位之间） */}
+          {/* 生成多姿势图触发按钮（上身图与第一个姿势位之间） */}
           {canGeneratePoses && (
             <div className="flex-none flex items-center">
               <button
                 onClick={onGenerateMultiPose}
                 className="btn-generate-suite flex flex-col items-center justify-center gap-1.5 w-11 h-[220px] rounded-2xl text-white"
-                title="生成多姿势套图"
+                title="生成多姿势图"
               >
                 <Sparkles className="h-4 w-4" />
                 <div className="flex flex-col items-center gap-0.5">
-                  {['生', '成', '套', '图'].map((char, i) => (
+                  {['多', '姿', '势', '图'].map((char, i) => (
                     <span key={i} className="text-[11px] font-semibold leading-tight">
                       {char}
                     </span>

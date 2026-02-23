@@ -10,8 +10,8 @@ export const siteConfig = {
   // 积分配置
   credits: {
     initial: 6,          // 新用户注册赠送积分
-    mainImageCost: 1,    // 生成主图消耗积分
-    multiPoseCost: 5,    // 生成多姿势套图消耗积分
+    mainImageCost: 1,    // 生成上身图消耗积分
+    multiPoseCost: 5,    // 生成多姿势图消耗积分
   },
   
   // 生成模式

@@ -5,7 +5,7 @@
  *  1. deductCredits 纯逻辑
  *  2. addCredits 纯逻辑
  *  3. 注册赠送积分配置
- *  4. 积分费率配置（主图/套图）
+ *  4. 积分费率配置（上身图/多姿势图）
  *  5. 积分边界值测试
  *  6. 并发安全性（乐观扣除+返还）
  */
@@ -48,19 +48,19 @@ describe('积分配置常量', () => {
     expect(siteConfig.credits.initial).toBe(6)
   })
 
-  it('生成主图费用应为 1 积分', () => {
+  it('生成上身图费用应为 1 积分', () => {
     expect(siteConfig.credits.mainImageCost).toBe(1)
   })
 
-  it('生成套图费用应为 5 积分', () => {
+  it('生成多姿势图费用应为 5 积分', () => {
     expect(siteConfig.credits.multiPoseCost).toBe(5)
   })
 
-  it('注册赠送积分应足够生成至少 1 张主图', () => {
+  it('注册赠送积分应足够生成至少 1 张上身图', () => {
     expect(siteConfig.credits.initial).toBeGreaterThanOrEqual(siteConfig.credits.mainImageCost)
   })
 
-  it('注册赠送积分应足够生成至少 1 套套图', () => {
+  it('注册赠送积分应足够生成至少 1 次多姿势图', () => {
     expect(siteConfig.credits.initial).toBeGreaterThanOrEqual(siteConfig.credits.multiPoseCost)
   })
 })
@@ -112,13 +112,13 @@ describe('deductCreditsLogic — 积分不足', () => {
     expect(result.error).toBe('积分不足')
   })
 
-  it('余额不足主图费用（1积分）时应失败', () => {
+  it('余额不足上身图费用（1积分）时应失败', () => {
     const result = deductCreditsLogic({ credits: 0 }, siteConfig.credits.mainImageCost)
     expect(result.success).toBe(false)
     expect(result.error).toBe('积分不足')
   })
 
-  it('余额不足套图费用（5积分）时应失败', () => {
+  it('余额不足多姿势图费用（5积分）时应失败', () => {
     const result = deductCreditsLogic({ credits: 4 }, siteConfig.credits.multiPoseCost)
     expect(result.success).toBe(false)
     expect(result.error).toBe('积分不足')
@@ -160,13 +160,13 @@ describe('deductCreditsLogic — 非法参数', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 describe('addCreditsLogic — 积分增加', () => {
-  it('返还 1 积分（主图生成失败）应正确增加余额', () => {
+  it('返还 1 积分（上身图生成失败）应正确增加余额', () => {
     const result = addCreditsLogic({ credits: 5 }, 1)
     expect(result.success).toBe(true)
     expect(result.newBalance).toBe(6)
   })
 
-  it('返还 5 积分（套图生成失败）应正确增加余额', () => {
+  it('返还 5 积分（多姿势图生成失败）应正确增加余额', () => {
     const result = addCreditsLogic({ credits: 1 }, 5)
     expect(result.success).toBe(true)
     expect(result.newBalance).toBe(6)
@@ -196,7 +196,7 @@ describe('addCreditsLogic — 积分增加', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 describe('虚扣除 + 返还流程', () => {
-  it('主图：扣除1积分后生成失败，返还后余额应恢复', () => {
+  it('上身图：扣除1积分后生成失败，返还后余额应恢复', () => {
     const initial = 6
     const cost = siteConfig.credits.mainImageCost // 1
 
@@ -211,7 +211,7 @@ describe('虚扣除 + 返还流程', () => {
     expect(afterRefund.newBalance).toBe(initial) // 恢复原始余额
   })
 
-  it('套图：扣除5积分后生成失败，返还后余额应恢复', () => {
+  it('多姿势图：扣除5积分后生成失败，返还后余额应恢复', () => {
     const initial = 6
     const cost = siteConfig.credits.multiPoseCost // 5
 
@@ -224,7 +224,7 @@ describe('虚扣除 + 返还流程', () => {
     expect(afterRefund.newBalance).toBe(initial)
   })
 
-  it('主图成功后不返还，余额应正确减少', () => {
+  it('上身图成功后不返还，余额应正确减少', () => {
     const initial = 6
     const cost = siteConfig.credits.mainImageCost
 
@@ -233,7 +233,7 @@ describe('虚扣除 + 返还流程', () => {
     expect(afterDeduct.newBalance).toBe(initial - cost) // 生成成功，不返还
   })
 
-  it('套图成功后不返还，余额应正确减少', () => {
+  it('多姿势图成功后不返还，余额应正确减少', () => {
     const initial = 6
     const cost = siteConfig.credits.multiPoseCost
 
@@ -248,7 +248,7 @@ describe('虚扣除 + 返还流程', () => {
 // ════════════════════════════════════════════════════════════════════════════
 
 describe('多次生成积分叠加', () => {
-  it('注册后连续生成6张主图应恰好用完所有积分', () => {
+  it('注册后连续生成6张上身图应恰好用完所有积分', () => {
     let credits = siteConfig.credits.initial // 6
     const cost = siteConfig.credits.mainImageCost // 1
 
@@ -261,7 +261,7 @@ describe('多次生成积分叠加', () => {
     expect(credits).toBe(0)
   })
 
-  it('注册后第7次生成主图应失败（积分已耗尽）', () => {
+  it('注册后第7次生成上身图应失败（积分已耗尽）', () => {
     let credits = siteConfig.credits.initial // 6
 
     for (let i = 0; i < 6; i++) {
@@ -274,7 +274,7 @@ describe('多次生成积分叠加', () => {
     expect(result.error).toBe('积分不足')
   })
 
-  it('注册后只能生成1套套图（5积分），剩余1积分', () => {
+  it('注册后只能生成1次多姿势图（5积分），剩余1积分', () => {
     let credits = siteConfig.credits.initial // 6
     const cost = siteConfig.credits.multiPoseCost // 5
 
@@ -282,13 +282,13 @@ describe('多次生成积分叠加', () => {
     expect(result.success).toBe(true)
     expect(result.newBalance).toBe(1)
 
-    // 第二次套图应失败
+    // 第二次多姿势图应失败
     const result2 = deductCreditsLogic({ credits: result.newBalance! }, cost)
     expect(result2.success).toBe(false)
     expect(result2.error).toBe('积分不足')
   })
 
-  it('剩余1积分时仍可生成主图', () => {
+  it('剩余1积分时仍可生成上身图', () => {
     const result = deductCreditsLogic({ credits: 1 }, siteConfig.credits.mainImageCost)
     expect(result.success).toBe(true)
     expect(result.newBalance).toBe(0)
@@ -304,21 +304,21 @@ describe('前端积分检查前置逻辑', () => {
     return credits < cost
   }
 
-  it('余额充足时不应阻止生成主图', () => {
+  it('余额充足时不应阻止生成上身图', () => {
     expect(shouldBlockGenerate(6, siteConfig.credits.mainImageCost)).toBe(false)
     expect(shouldBlockGenerate(1, siteConfig.credits.mainImageCost)).toBe(false)
   })
 
-  it('余额不足时应阻止生成主图', () => {
+  it('余额不足时应阻止生成上身图', () => {
     expect(shouldBlockGenerate(0, siteConfig.credits.mainImageCost)).toBe(true)
   })
 
-  it('余额充足时不应阻止生成套图', () => {
+  it('余额充足时不应阻止生成多姿势图', () => {
     expect(shouldBlockGenerate(6, siteConfig.credits.multiPoseCost)).toBe(false)
     expect(shouldBlockGenerate(5, siteConfig.credits.multiPoseCost)).toBe(false)
   })
 
-  it('余额不足5积分时应阻止生成套图', () => {
+  it('余额不足5积分时应阻止生成多姿势图', () => {
     expect(shouldBlockGenerate(4, siteConfig.credits.multiPoseCost)).toBe(true)
     expect(shouldBlockGenerate(0, siteConfig.credits.multiPoseCost)).toBe(true)
   })

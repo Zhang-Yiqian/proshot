@@ -151,27 +151,30 @@ export async function generateImage(options: GenerateOptions): Promise<GenerateR
  * 生成服装上身图
  * @param referenceImageUrl 参考图URL
  * @param sceneId 场景ID（如 'street', 'cafe'）
+ * @param customScene 用户自定义场景描述（非空时优先）
+ * @param modelTypeId 模特类型ID（如 'asian-female'）
  */
 export async function generateClothingImage(
   referenceImageUrl: string,
   sceneId: string,
-  customScene?: string
+  customScene?: string,
+  modelTypeId?: string
 ): Promise<GenerateResult> {
   console.log('[AI Client] === 开始生成服装上身图 ===')
-  console.log('[AI Client] 场景ID:', sceneId, '自定义场景:', customScene || '(无)')
+  console.log('[AI Client] 场景ID:', sceneId, '自定义场景:', customScene || '(无)', '模特类型:', modelTypeId || '(默认)')
   console.log('[AI Client] 参考图URL:', referenceImageUrl)
 
-  // 主图 Mock 模式：直接返回固定图片，跳过模型调用
-  // 套图节点（generateMultiPoseImages）不经过此函数，不受影响
+  // 上身图 Mock 模式：直接返回固定图片，跳过模型调用
+  // 多姿势图节点（generateMultiPoseImages）不经过此函数，不受影响
   if (MODEL_CONFIG.mockMainImageMode) {
-    console.log('[AI Client] 主图 Mock 模式已开启，跳过模型调用，返回固定图片')
+    console.log('[AI Client] 上身图 Mock 模式已开启，跳过模型调用，返回固定图片')
     await new Promise(resolve => setTimeout(resolve, 2000))
     return { success: true, imageUrl: MODEL_CONFIG.mockImageUrl }
   }
   
   // 使用 prompt-builder 构建完整的 prompt（自定义场景优先）
   const { buildClothingPrompt } = await import('./prompt-builder')
-  const prompt = buildClothingPrompt(sceneId, customScene)
+  const prompt = buildClothingPrompt(sceneId, customScene, modelTypeId)
   
   console.log('[AI Client] 构建的 Prompt:', prompt.substring(0, 300) + '...')
   
@@ -191,9 +194,9 @@ export async function generateProductImage(
   referenceImageUrl: string,
   sceneId: string
 ): Promise<GenerateResult> {
-  // 主图 Mock 模式：直接返回固定图片，跳过模型调用
+  // 上身图 Mock 模式：直接返回固定图片，跳过模型调用
   if (MODEL_CONFIG.mockMainImageMode) {
-    console.log('[AI Client] 主图 Mock 模式已开启，跳过物品场景图模型调用，返回固定图片')
+    console.log('[AI Client] 上身图 Mock 模式已开启，跳过物品场景图模型调用，返回固定图片')
     await new Promise(resolve => setTimeout(resolve, 2000))
     return { success: true, imageUrl: MODEL_CONFIG.mockImageUrl }
   }
@@ -210,15 +213,15 @@ export async function generateProductImage(
 }
 
 /**
- * 生成模特多姿势拍摄图（3张，基于主图人物特征和场景）
- * 注意：严格保持与主图相同的拍摄角度，不生成主图中未出现的角度
+ * 生成模特多姿势拍摄图（3张，基于上身图人物特征和场景）
+ * 注意：严格保持与上身图相同的拍摄角度，不生成上身图中未出现的角度
  */
 export async function generateMultiPoseImages(
   mainImageUrl: string
 ): Promise<GenerateResult> {
-  // 套图节点始终调用真实模型，不受任何 mock 配置影响
+  // 多姿势图节点始终调用真实模型，不受任何 mock 配置影响
 
-  // 3 种不同姿势的提示词（严格保持主图拍摄角度）
+  // 3 种不同姿势的提示词（严格保持上身图拍摄角度）
   const posePrompts = [
     `Based on the reference image provided, generate a professional fashion e-commerce photo. Requirements:
 1. Preserve exactly the model's face, skin tone, hairstyle, and hair color from the reference image.

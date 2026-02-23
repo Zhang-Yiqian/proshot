@@ -1,5 +1,5 @@
 /**
- * 主图生成 API
+ * 上身图生成 API
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -11,7 +11,7 @@ import { getUserProfile, createUserProfile } from '@/lib/db/profiles'
 import { MODEL_CONFIG } from '@/config/models'
 
 export async function POST(request: NextRequest) {
-  console.log('=== [API] 开始处理主图生成请求 ===')
+  console.log('=== [API] 开始处理上身图生成请求 ===')
   try {
     const supabase = createClient()
 
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('[API] 接收到的请求数据:', body)
     
-    const { originalImageUrl, sceneType, mode = 'clothing', customScene = '' } = body
+    const { originalImageUrl, sceneType, mode = 'clothing', customScene = '', modelType = '' } = body
 
     if (!originalImageUrl || !sceneType) {
       console.error('[API] 参数缺失:', { originalImageUrl, sceneType })
@@ -29,17 +29,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[API] 主图 Mock 模式状态:', MODEL_CONFIG.mockMainImageMode)
+    console.log('[API] 上身图 Mock 模式状态:', MODEL_CONFIG.mockMainImageMode)
 
-    // 主图 Mock 模式：跳过用户鉴权和数据库操作，直接调用生成函数
+    // 上身图 Mock 模式：跳过用户鉴权和数据库操作，直接调用生成函数
     // 生成函数内部会判断 mockMainImageMode，决定是否跳过模型调用
     if (MODEL_CONFIG.mockMainImageMode) {
-      console.log('[API] 主图使用 Mock 模式，跳过鉴权，直接调用生成函数')
+      console.log('[API] 上身图使用 Mock 模式，跳过鉴权，直接调用生成函数')
       const result = mode === 'product'
         ? await generateProductImage(originalImageUrl, sceneType)
-        : await generateClothingImage(originalImageUrl, sceneType, customScene)
+        : await generateClothingImage(originalImageUrl, sceneType, customScene, modelType)
 
-      console.log('[API] 主图 Mock 生成结果:', result)
+      console.log('[API] 上身图 Mock 生成结果:', result)
       return NextResponse.json({
         success: true,
         imageUrl: result.imageUrl,
@@ -79,11 +79,11 @@ export async function POST(request: NextRequest) {
 
     console.log('[API] 生成记录创建成功:', generation.id)
 
-    // 调用 AI 生成：传入场景ID和可选的自定义场景
-    console.log('[API] 开始调用 AI 生成图片...', { sceneType, customScene: customScene || '(无)' })
+    // 调用 AI 生成：传入场景ID、可选的自定义场景和模特类型
+    console.log('[API] 开始调用 AI 生成图片...', { sceneType, customScene: customScene || '(无)', modelType: modelType || '(默认)' })
     const result = mode === 'product'
       ? await generateProductImage(originalImageUrl, sceneType)
-      : await generateClothingImage(originalImageUrl, sceneType, customScene)
+      : await generateClothingImage(originalImageUrl, sceneType, customScene, modelType)
 
     console.log('[API] AI 生成完成:', result)
 
