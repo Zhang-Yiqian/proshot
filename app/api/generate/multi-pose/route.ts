@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   console.log('=== [API] 开始处理多姿势图生成请求 ===')
   try {
     // 解析请求
-    const { mainImageUrl } = await request.json()
+    const { mainImageUrl, generationId } = await request.json()
 
     if (!mainImageUrl) {
       return NextResponse.json(
@@ -56,6 +56,23 @@ export async function POST(request: NextRequest) {
     const result = await generateMultiPoseImages(mainImageUrl)
 
     if (result.success && result.imageUrls && result.imageUrls.length > 0) {
+      // 将多姿势图 URL 持久化到数据库，确保刷新后仍可加载
+      if (generationId) {
+        const { error: updateError } = await supabase
+          .from('generations')
+          .update({ multi_pose_image_urls: result.imageUrls })
+          .eq('id', generationId)
+          .eq('user_id', user.id)
+
+        if (updateError) {
+          console.warn('[API] 多姿势图 URL 写入数据库失败:', updateError.message)
+        } else {
+          console.log('[API] 多姿势图 URL 已保存到数据库, generationId:', generationId)
+        }
+      } else {
+        console.warn('[API] 未提供 generationId，多姿势图 URL 不会持久化')
+      }
+
       return NextResponse.json({
         success: true,
         imageUrls: result.imageUrls,

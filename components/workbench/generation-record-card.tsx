@@ -1,6 +1,8 @@
 'use client'
 
-import { Download, Sparkles, Loader2, Layers, Clock, ImageIcon } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
+import { Download, Sparkles, Loader2, Layers, Clock, ImageIcon, ZoomIn, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { GenerationRecord } from '@/types/generation-record'
 
@@ -31,6 +33,7 @@ function ImageCard({
   slotNumber,
   isMain,
   onDownload,
+  onPreview,
 }: {
   src?: string
   label: string
@@ -39,6 +42,7 @@ function ImageCard({
   slotNumber?: number
   isMain?: boolean
   onDownload?: () => void
+  onPreview?: () => void
 }) {
   return (
     <div
@@ -53,13 +57,27 @@ function ImageCard({
     >
       {src ? (
         <>
-          <img src={src} alt={label} className="w-full h-full object-cover" />
+          <img
+            src={src}
+            alt={label}
+            className="w-full h-full object-cover cursor-zoom-in"
+            onClick={onPreview}
+          />
           {/* 悬停遮罩 */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            {onPreview && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onPreview() }}
+                className="absolute top-3 left-3 p-1.5 rounded-lg glass-thin text-white hover:scale-105 transition-transform pointer-events-auto"
+                title="查看大图"
+              >
+                <ZoomIn className="h-3.5 w-3.5" />
+              </button>
+            )}
             {onDownload && (
               <button
-                onClick={onDownload}
-                className="absolute bottom-3 right-3 p-2 rounded-xl glass-thin text-white hover:scale-105 transition-transform"
+                onClick={(e) => { e.stopPropagation(); onDownload() }}
+                className="absolute bottom-3 right-3 p-2 rounded-xl glass-thin text-white hover:scale-105 transition-transform pointer-events-auto"
                 title="下载图片"
               >
                 <Download className="h-3.5 w-3.5" />
@@ -67,7 +85,7 @@ function ImageCard({
             )}
           </div>
           {/* 标签 */}
-          <div className="absolute bottom-2.5 left-2.5">
+          <div className="absolute bottom-2.5 left-2.5 pointer-events-none">
             <span
               className={cn(
                 'px-2 py-0.5 rounded-lg text-[11px] font-semibold text-white',
@@ -105,6 +123,41 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
   const hasPoses = record.multiPoseImages.length > 0 || record.generatingMultiPose
   const canGeneratePoses =
     record.mainImage && !record.generatingMultiPose && record.multiPoseImages.length === 0
+
+  // 浮层预览状态：存储所有可预览图片列表和当前索引
+  const allPreviewImages: { src: string; label: string }[] = [
+    ...(record.mainImage ? [{ src: record.mainImage, label: '上身图' }] : []),
+    ...record.multiPoseImages.map((src, i) => ({ src, label: `姿势 ${i + 1}` })),
+  ]
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
+
+  const handleOpenPreview = useCallback((index: number) => {
+    setPreviewIndex(index)
+  }, [])
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewIndex(null)
+  }, [])
+
+  const handlePrev = useCallback(() => {
+    setPreviewIndex((i) => (i !== null ? (i - 1 + allPreviewImages.length) % allPreviewImages.length : null))
+  }, [allPreviewImages.length])
+
+  const handleNext = useCallback(() => {
+    setPreviewIndex((i) => (i !== null ? (i + 1) % allPreviewImages.length : null))
+  }, [allPreviewImages.length])
+
+  // 键盘导航
+  useEffect(() => {
+    if (previewIndex === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClosePreview()
+      else if (e.key === 'ArrowLeft') handlePrev()
+      else if (e.key === 'ArrowRight') handleNext()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewIndex, handleClosePreview, handlePrev, handleNext])
 
   const handleDownload = (url: string) => {
     const a = document.createElement('a')
@@ -188,6 +241,7 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
             isMain
             isLoading={record.generating && !record.mainImage}
             onDownload={record.mainImage ? () => handleDownload(record.mainImage!) : undefined}
+            onPreview={record.mainImage ? () => handleOpenPreview(0) : undefined}
           />
 
           {/* 生成多姿势图触发按钮（上身图与第一个姿势位之间） */}
@@ -213,6 +267,8 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
           {/* 多姿势图卡片 */}
           {Array.from({ length: MULTI_POSE_SLOTS }).map((_, i) => {
             const poseImage = record.multiPoseImages[i]
+            // 在预览列表中，多姿势图从索引 1 开始（主图占 0）
+            const previewIdx = record.mainImage ? i + 1 : i
             return (
               <ImageCard
                 key={i}
@@ -222,6 +278,7 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
                 isEmpty={!record.generatingMultiPose && !poseImage && !canGeneratePoses}
                 slotNumber={i + 1}
                 onDownload={poseImage ? () => handleDownload(poseImage) : undefined}
+                onPreview={poseImage ? () => handleOpenPreview(previewIdx) : undefined}
               />
             )
           })}
@@ -230,6 +287,102 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
         {/* 右侧渐变遮罩（指示可横滑） */}
         <div className="absolute right-0 top-0 bottom-1 w-12 bg-gradient-to-l from-white/60 to-transparent pointer-events-none rounded-r-2xl" />
       </div>
+
+      {/* ===== 大图预览浮层（Portal 挂载到 body，避免 backdrop-filter 破坏 fixed 定位）===== */}
+      {previewIndex !== null && allPreviewImages[previewIndex] && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
+          onClick={handleClosePreview}
+        >
+          {/* 背景遮罩 */}
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
+
+          {/* 内容区 */}
+          <div
+            className="relative z-10 flex flex-col items-center gap-4 max-w-[90vw] max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 顶部工具栏 */}
+            <div className="flex items-center justify-between w-full px-1">
+              <span className="text-white/70 text-sm font-medium">
+                {allPreviewImages[previewIndex].label}
+                {allPreviewImages.length > 1 && (
+                  <span className="ml-2 text-white/40 text-xs">
+                    {previewIndex + 1} / {allPreviewImages.length}
+                  </span>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleDownload(allPreviewImages[previewIndex!].src)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="下载图片"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleClosePreview}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="关闭"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* 图片主体 + 左右箭头 */}
+            <div className="relative flex items-center gap-3">
+              {allPreviewImages.length > 1 && (
+                <button
+                  onClick={handlePrev}
+                  className="flex-none p-2.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+              )}
+
+              <div className="rounded-2xl overflow-hidden shadow-2xl">
+                <img
+                  src={allPreviewImages[previewIndex].src}
+                  alt={allPreviewImages[previewIndex].label}
+                  className="max-w-[75vw] max-h-[75vh] object-contain"
+                  style={{ display: 'block' }}
+                />
+              </div>
+
+              {allPreviewImages.length > 1 && (
+                <button
+                  onClick={handleNext}
+                  className="flex-none p-2.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+
+            {/* 缩略图导航条（多图时显示） */}
+            {allPreviewImages.length > 1 && (
+              <div className="flex gap-2 px-2">
+                {allPreviewImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setPreviewIndex(idx)}
+                    className={cn(
+                      'w-12 h-16 rounded-lg overflow-hidden border-2 transition-all duration-150 flex-none',
+                      idx === previewIndex
+                        ? 'border-white/80 scale-105 shadow-lg'
+                        : 'border-white/20 opacity-60 hover:opacity-90 hover:border-white/40'
+                    )}
+                  >
+                    <img src={img.src} alt={img.label} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

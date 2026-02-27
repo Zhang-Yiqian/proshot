@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Sparkles, X, Gift, ImageIcon, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
@@ -17,11 +17,32 @@ import { SceneSelector } from '@/components/workbench/scene-selector'
 import type { GenerationRecord, GenerationMode } from '@/types/generation-record'
 import type { GenerationResult } from '@/types/generation'
 
+// ─── 生成记录本地缓存（stale-while-revalidate）────────────────────────────────
+const RECORDS_CACHE_PREFIX = 'proshot_records_'
+
+function readCachedRecords(userId: string): GenerationRecord[] | null {
+  try {
+    const raw = localStorage.getItem(RECORDS_CACHE_PREFIX + userId)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Array<Omit<GenerationRecord, 'timestamp'> & { timestamp: string }>
+    return parsed.map((r) => ({ ...r, timestamp: new Date(r.timestamp) }))
+  } catch {
+    return null
+  }
+}
+
+function writeCachedRecords(userId: string, records: GenerationRecord[]): void {
+  try {
+    localStorage.setItem(RECORDS_CACHE_PREFIX + userId, JSON.stringify(records))
+  } catch {}
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * 将数据库的 GenerationResult 转换为 UI 展示的 GenerationRecord。
  * style_preset 格式为 "${mode}-${sceneId}"，例如 "clothing-white-bg"
  */
-function dbRecordToUIRecord(gen: GenerationResult): GenerationRecord {
+function dbRecordToUIRecord(gen: GenerationResult & { multiPoseImageUrls?: string[] }): GenerationRecord {
   const firstDash = gen.stylePreset.indexOf('-')
   const mode = (firstDash > 0 ? gen.stylePreset.slice(0, firstDash) : 'clothing') as GenerationMode
   const sceneId = firstDash > 0 ? gen.stylePreset.slice(firstDash + 1) : gen.stylePreset
@@ -37,7 +58,7 @@ function dbRecordToUIRecord(gen: GenerationResult): GenerationRecord {
     referenceFileName: 'uploaded-image.jpg',
     mainImage: gen.generatedImageUrl ?? null,
     generating: false,
-    multiPoseImages: [],
+    multiPoseImages: gen.multiPoseImageUrls ?? [],
     generatingMultiPose: false,
   }
 }
@@ -105,6 +126,65 @@ export default function HomePage() {
   // 追踪上一次的 userId，用于判断登录/登出事件
   const prevUserIdRef = useRef<string | null | undefined>(undefined)
 
+  // 直接从 Supabase 客户端查询（绕过 API Route，减少网络往返）
+  // stale-while-revalidate：先从 localStorage 恢复，再后台刷新
+  const loadRecordsFromDB = useCallback(async (userId: string) => {
+    // 1. 立即从缓存恢复，消除白屏
+    const cached = readCachedRecords(userId)
+    if (cached && cached.length > 0) {
+      setRecords((prev) => {
+        // 只保留本次会话新增的"生成中"记录，缓存记录追加在后面
+        const inProgress = prev.filter((r) => r.generating || r.generatingMultiPose)
+        return [...inProgress, ...cached]
+      })
+      console.log(`[Records] 从缓存恢复 ${cached.length} 条记录`)
+    }
+
+    // 2. 后台从数据库刷新
+    try {
+      console.log('[Records] 后台刷新历史记录...')
+      const { data, error } = await supabase
+        .from('generations')
+        .select('id, user_id, original_image_url, generated_image_url, multi_pose_image_urls, prompt_used, style_preset, status, error_message, created_at, updated_at')
+        .eq('user_id', userId)
+        .in('status', ['completed', 'pending'])
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (error) {
+        console.warn('[Records] 数据库查询失败:', error.message)
+        return
+      }
+
+      const freshRecords = (data ?? []).map((row) =>
+        dbRecordToUIRecord({
+          id: row.id,
+          userId: row.user_id,
+          originalImageUrl: row.original_image_url,
+          generatedImageUrl: row.generated_image_url,
+          multiPoseImageUrls: row.multi_pose_image_urls ?? [],
+          promptUsed: row.prompt_used,
+          stylePreset: row.style_preset,
+          status: row.status,
+          errorMessage: row.error_message,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        })
+      )
+
+      setRecords((prev) => {
+        // 保留本次会话正在进行中的记录，其余全部替换为最新数据
+        const inProgress = prev.filter((r) => r.generating || r.generatingMultiPose)
+        return [...inProgress, ...freshRecords]
+      })
+
+      writeCachedRecords(userId, freshRecords)
+      console.log(`[Records] 已从数据库加载 ${freshRecords.length} 条记录`)
+    } catch (e) {
+      console.warn('[Records] 从数据库加载记录失败:', e)
+    }
+  }, [supabase])
+
   // 监听登录/登出状态变化，同步生成记录
   useEffect(() => {
     // authLoading 期间不处理，等待确定的用户状态
@@ -116,9 +196,9 @@ export default function HomePage() {
     // undefined 代表初始化尚未发生，不触发（避免和 null 混淆）
     if (prevUserId === undefined) {
       prevUserIdRef.current = currentUserId
-      // 初始化时若已登录，立即从 DB 加载记录
+      // 初始化时若已登录，立即加载记录
       if (currentUserId) {
-        loadRecordsFromDB()
+        loadRecordsFromDB(currentUserId)
       }
       return
     }
@@ -127,35 +207,14 @@ export default function HomePage() {
     prevUserIdRef.current = currentUserId
 
     if (currentUserId) {
-      // 用户登录：从数据库加载历史记录
-      loadRecordsFromDB()
+      // 用户登录：加载历史记录
+      loadRecordsFromDB(currentUserId)
     } else {
       // 用户登出：清空记录
       console.log('[Records] 用户已登出，清空生成记录')
       setRecords([])
     }
-  }, [user, authLoading])
-
-  async function loadRecordsFromDB() {
-    try {
-      console.log('[Records] 从数据库加载历史记录...')
-      const res = await fetch('/api/generations')
-      if (!res.ok) {
-        console.warn('[Records] 加载失败，状态码:', res.status)
-        return
-      }
-      const data = await res.json()
-      if (data.success && Array.isArray(data.generations)) {
-        const uiRecords = (data.generations as GenerationResult[])
-          .filter((g) => g.status === 'completed' || g.status === 'pending')
-          .map(dbRecordToUIRecord)
-        setRecords(uiRecords)
-        console.log(`[Records] 已从数据库加载 ${uiRecords.length} 条记录`)
-      }
-    } catch (e) {
-      console.warn('[Records] 从数据库加载记录失败:', e)
-    }
-  }
+  }, [user, authLoading, loadRecordsFromDB])
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
@@ -407,7 +466,7 @@ export default function HomePage() {
       const response = await fetch('/api/generate/multi-pose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mainImageUrl: record.mainImage }),
+        body: JSON.stringify({ mainImageUrl: record.mainImage, generationId: recordId }),
       })
 
       const result = await response.json()
