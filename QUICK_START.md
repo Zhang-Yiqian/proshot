@@ -167,13 +167,13 @@ npm run lint
 
 ### OpenRouter API 调用
 
-当前 `lib/ai/gemini-client.ts` 通过 OpenRouter 调用 Google Gemini 2.5 Flash Image：
+当前 `lib/ai/gemini-client.ts` 通过 OpenRouter 调用 Google Gemini 3.1 Flash Image Preview：
 
 ```typescript
 // 请求格式
 POST /api/v1/chat/completions
 {
-  "model": "google/gemini-2.5-flash-image",
+  "model": "google/gemini-3.1-flash-image-preview",
   "messages": [{ 
     "role": "user", 
     "content": [

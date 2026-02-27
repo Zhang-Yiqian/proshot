@@ -3,8 +3,8 @@
  */
 
 export const AI_MODELS = {
-  MAIN_IMAGE: "google/gemini-2.5-flash-image",
-  MULTI_POSE: "google/gemini-2.5-flash-image", // 多姿势图与上身图使用同一模型（支持图生图）
+  MAIN_IMAGE: "google/gemini-3.1-flash-image-preview",
+  MULTI_POSE: "google/gemini-3.1-flash-image-preview", // 多姿势图与上身图使用同一模型（支持图生图）
   EXPAND_IMAGE: "google/gemini-2.5-flash-image-preview",
 } as const
 

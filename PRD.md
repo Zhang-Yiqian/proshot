@@ -71,8 +71,8 @@
 
 | 用途 | 模型 | 说明 |
 |-----|------|------|
-| 上身图生成 | `google/gemini-2.5-flash-image` | 服装上身/物品场景生成 |
-| 多姿势图扩展 | `google/gemini-2.5-flash-image` | 多姿势并行生成（3张） |
+| 上身图生成 | `google/gemini-3.1-flash-image-preview` | 服装上身/物品场景生成 |
+| 多姿势图扩展 | `google/gemini-3.1-flash-image-preview` | 多姿势并行生成（3张） |
 | 图片扩展（预留） | `google/gemini-2.5-flash-image-preview` | 未来扩展用途 |
 
 **环境变量：**
@@ -362,3 +362,4 @@ updated_at          TIMESTAMP
 | v2.1 | 2026-02 | 新用户初始积分调整为 6；多姿势图扣费调整为 5 积分/次（生成 3 张）；UI 升级为 Apple Liquid Glass 风格；新增 Jest 单元测试 |
 | v2.2 | 2026-02 | 场景预设重构：从 6 种扩展至 5 大类×10 细分共 50 种；左侧面板改为 Flex 吸底布局；新增自定义场景输入；Prompt Builder 支持自定义场景优先；API 路由新增 customScene 参数；新增场景预设 35 条单元测试 |
 | v2.3 | 2026-02 | 新增模特分类模块：欧美女、欧美男、亚洲女、亚洲男 4 种可选；左侧配置栏新增步骤 2「选择模特类型」；Prompt Builder 融合模特描述；API 路由新增 modelType 参数 |
+| v2.4 | 2026-02 | 上身图生成和多姿势图生成底层模型切换为 `google/gemini-3.1-flash-image-preview` |
