@@ -123,12 +123,42 @@ export default function HomePage() {
   const hasScene = !!selectedScene || !!customScene.trim()
 
   const [records, setRecords] = useState<GenerationRecord[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyProgress, setHistoryProgress] = useState(0)
+  const historyProgressRef = useRef<ReturnType<typeof setInterval> | null>(null)
   // 追踪上一次的 userId，用于判断登录/登出事件
   const prevUserIdRef = useRef<string | null | undefined>(undefined)
+
+  // 模拟进度：先快后慢，最高 90%，完成时跳 100% 后淡出
+  const startHistoryProgress = useCallback(() => {
+    setHistoryProgress(0)
+    if (historyProgressRef.current) clearInterval(historyProgressRef.current)
+    historyProgressRef.current = setInterval(() => {
+      setHistoryProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(historyProgressRef.current!)
+          return 90
+        }
+        // 越接近 90% 增量越小，模拟"快到了但还没好"的感觉
+        const increment = Math.max(1, Math.floor((90 - prev) / 8))
+        return Math.min(90, prev + increment)
+      })
+    }, 200)
+  }, [])
+
+  const finishHistoryProgress = useCallback(() => {
+    if (historyProgressRef.current) clearInterval(historyProgressRef.current)
+    setHistoryProgress(100)
+    // 短暂停留 100% 后清零隐藏
+    setTimeout(() => setHistoryProgress(0), 600)
+  }, [])
 
   // 直接从 Supabase 客户端查询（绕过 API Route，减少网络往返）
   // stale-while-revalidate：先从 localStorage 恢复，再后台刷新
   const loadRecordsFromDB = useCallback(async (userId: string) => {
+    setHistoryLoading(true)
+    startHistoryProgress()
+
     // 1. 立即从缓存恢复，消除白屏
     const cached = readCachedRecords(userId)
     if (cached && cached.length > 0) {
@@ -182,8 +212,11 @@ export default function HomePage() {
       console.log(`[Records] 已从数据库加载 ${freshRecords.length} 条记录`)
     } catch (e) {
       console.warn('[Records] 从数据库加载记录失败:', e)
+    } finally {
+      setHistoryLoading(false)
+      finishHistoryProgress()
     }
-  }, [supabase])
+  }, [supabase, startHistoryProgress, finishHistoryProgress])
 
   // 监听登录/登出状态变化，同步生成记录
   useEffect(() => {
@@ -210,11 +243,21 @@ export default function HomePage() {
       // 用户登录：加载历史记录
       loadRecordsFromDB(currentUserId)
     } else {
-      // 用户登出：清空记录
+      // 用户登出：清空记录和进度状态
       console.log('[Records] 用户已登出，清空生成记录')
       setRecords([])
+      setHistoryLoading(false)
+      if (historyProgressRef.current) clearInterval(historyProgressRef.current)
+      setHistoryProgress(0)
     }
   }, [user, authLoading, loadRecordsFromDB])
+
+  // 组件卸载时清理进度 interval，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (historyProgressRef.current) clearInterval(historyProgressRef.current)
+    }
+  }, [])
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
@@ -738,17 +781,45 @@ export default function HomePage() {
                     生成上镜
                   </div>
                 </div>
+
+                {/* 历史记录加载中提示 */}
+                {(historyLoading || historyProgress > 0) && user && (
+                  <div className="w-full flex flex-col items-center gap-2 pt-1">
+                    <div className="w-full h-1.5 rounded-full bg-primary/8 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary/40 transition-all duration-300 ease-out"
+                        style={{ width: `${historyProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/50 tabular-nums">
+                      正在加载历史记录… {historyProgress}%
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             /* 时间线记录 */
             <div className="p-6 space-y-4">
-              {/* 记录数量提示 */}
-              <div className="flex items-center gap-2 px-1">
+              {/* 记录数量 & 加载中提示 */}
+              <div className="flex items-center justify-between gap-2 px-1">
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60">
                   <Layers className="h-3.5 w-3.5" />
-                  <span>共 {records.length} 条生成记录</span>
+                  <span>共 {records.filter((r) => !r.generating).length} 条生成记录</span>
                 </div>
+                {(historyLoading || historyProgress > 0) && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-24 h-1.5 rounded-full bg-primary/8 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary/40 transition-all duration-300 ease-out"
+                        style={{ width: `${historyProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+                      {historyProgress < 100 ? `同步历史 ${historyProgress}%` : '完成'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {records.map((record) => (

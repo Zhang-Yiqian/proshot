@@ -188,7 +188,6 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
         {/* 场景与信息 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-base leading-none">{record.sceneIcon}</span>
             <span className="text-sm font-semibold text-foreground">{record.sceneName}</span>
             <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[11px] font-medium">
               {record.mode === 'clothing' ? '服装上身' : '物品场景'}
@@ -205,14 +204,6 @@ export function GenerationRecordCard({ record, onGenerateMultiPose }: Generation
             <span className="text-[11px] text-muted-foreground/60">
               {formatRelativeTime(record.timestamp)} · {formatTime(record.timestamp)}
             </span>
-            {record.referenceFileName && (
-              <>
-                <span className="text-muted-foreground/30">·</span>
-                <span className="text-[11px] text-muted-foreground/50 truncate max-w-[120px]">
-                  {record.referenceFileName}
-                </span>
-              </>
-            )}
           </div>
         </div>
 
