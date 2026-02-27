@@ -1,11 +1,13 @@
 'use client'
 
-import { Check, Sparkles, ArrowLeft, Zap, Crown, Building } from 'lucide-react'
+import { Check, Sparkles, ArrowLeft, Zap, Crown, Building, MessageCircle, Copy, CheckCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useState } from 'react'
+
 
 const PRICING_PLANS = [
   {
@@ -38,6 +40,30 @@ const PRICING_PLANS = [
 ]
 
 export default function PricingPage() {
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const handleCopyContact = async (id: string) => {
+    setLoadingId(id)
+    setErrorMsg(null)
+    try {
+      const res = await fetch('/api/contact')
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.error ?? '获取联系方式失败，请稍后重试')
+        return
+      }
+      await navigator.clipboard.writeText(data.wechat)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2500)
+    } catch {
+      setErrorMsg('网络错误，请稍后重试')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -62,6 +88,13 @@ export default function PricingPage() {
               灵活的积分套餐，用多少买多少，无隐藏费用
             </p>
           </div>
+
+          {/* 错误提示 */}
+          {errorMsg && (
+            <div className="max-w-5xl mx-auto mb-4 px-4 py-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center">
+              {errorMsg}
+            </div>
+          )}
 
           {/* 价格卡片 */}
           <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
@@ -111,14 +144,31 @@ export default function PricingPage() {
                 </ul>
 
                 {/* 购买按钮 */}
-                <Button 
+                <Button
                   className={cn(
-                    "w-full",
+                    "w-full gap-2",
                     plan.popular && "btn-glow"
-                  )} 
+                  )}
                   variant={plan.popular ? 'default' : 'outline'}
+                  disabled={loadingId === plan.name}
+                  onClick={() => handleCopyContact(plan.name)}
                 >
-                  立即购买
+                  {copiedId === plan.name ? (
+                    <>
+                      <CheckCheck className="h-4 w-4" />
+                      微信号已复制，联系站长付款
+                    </>
+                  ) : loadingId === plan.name ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      获取中…
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="h-4 w-4" />
+                      复制微信号，联系站长付款
+                    </>
+                  )}
                 </Button>
               </div>
             ))}
@@ -127,13 +177,33 @@ export default function PricingPage() {
           {/* 企业定制 */}
           <div className="mt-16 text-center">
             <div className="glass-card p-8 max-w-2xl mx-auto">
-              <h3 className="text-xl font-semibold mb-2">需要更多积分？</h3>
+              <h3 className="text-xl font-semibold mb-2">需要更多积分或定制方案？</h3>
               <p className="text-muted-foreground mb-6">
-                联系我们定制企业专属方案，享受更优惠的价格
+                点击下方按钮复制微信号，联系站长定制企业专属方案，享受更优惠的价格
               </p>
-              <Button variant="outline" size="lg" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                联系销售
+              <Button
+                variant="outline"
+                size="lg"
+                className="gap-2"
+                disabled={loadingId === 'enterprise'}
+                onClick={() => handleCopyContact('enterprise')}
+              >
+                {copiedId === 'enterprise' ? (
+                  <>
+                    <CheckCheck className="h-4 w-4" />
+                    微信号已复制，联系站长付款
+                  </>
+                ) : loadingId === 'enterprise' ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    获取中…
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    复制微信号，联系站长
+                  </>
+                )}
               </Button>
             </div>
           </div>
